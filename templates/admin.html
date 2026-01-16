@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <title>Admin Command Center</title>
+    <style>
+        .admin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
+        .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        .stats-bar { display: flex; gap: 15px; background: #1e293b; color: white; padding: 15px; border-radius: 12px; margin-bottom: 20px; font-size: 0.9rem; }
+        .badge-red { background: #fee2e2; color: #ef4444; padding: 2px 8px; border-radius: 4px; font-weight: bold; }
+        .log-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; margin-top: 10px; }
+        .log-table th, .log-table td { text-align: left; padding: 8px; border-bottom: 1px solid #f1f5f9; }
+        .btn-view { color: #10b981; text-decoration: none; margin-right: 10px; }
+        .btn-del { color: #ef4444; text-decoration: none; }
+        /* Style for the Clear History link */
+        .btn-clear { font-size: 0.7rem; color: #ef4444; text-decoration: none; border: 1px solid #fca5a5; padding: 2px 8px; border-radius: 4px; transition: all 0.2s; }
+        .btn-clear:hover { background: #ef4444; color: white; }
+    </style>
+</head>
+<body style="background-color: #f8fafc;">
+
+    <div class="container" style="max-width: 1100px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h2 style="margin:0; color:#1e293b;">🛠️ System Admin Dashboard</h2>
+            <a href="/logout" class="btn" style="width:auto; background:#64748b; margin:0;">Exit Session</a>
+        </div>
+
+        <div class="stats-bar" style="margin-top:20px;">
+            <span>🖥️ CPU: <b>{{ health.cpu }}%</b></span> | 
+            <span>🧠 RAM: <b>{{ health.ram }}%</b></span> | 
+            <span>💾 Storage: <b>{{ used_mb }}MB / 500MB</b> ({{ percent }}%)</span>
+        </div>
+
+        <div class="admin-grid">
+            
+            <div class="card">
+                <h4 style="margin-top:0;">🔐 Access Control</h4>
+                <p style="font-size:0.8rem; color:#64748b;">Change credentials for any node. Changes persist after restart.</p>
+                <form action="/update_passwords" method="post">
+                    <select name="target_role" style="width:100%; padding:8px; border-radius:6px; border:1px solid #cbd5e1;">
+                        <option value="sender">Sender Node</option>
+                        <option value="receiver">Receiver Node</option>
+                        <option value="admin">Admin Dashboard</option>
+                    </select>
+                    <input type="text" name="new_password" placeholder="New Password" required style="margin-top:10px;">
+                    <button type="submit" class="btn" style="background:#0f172a; margin-top:10px;">Apply New Key</button>
+                </form>
+                {% if request.args.get('pass_success') %}
+                <p style="color:#10b981; font-size:0.8rem; margin-top:10px;">✅ Password updated successfully!</p>
+                {% endif %}
+            </div>
+
+            <div class="card">
+                <h4 style="margin-top:0;">📦 File Inventory</h4>
+                <div style="max-height: 200px; overflow-y: auto;">
+                    {% for f in files %}
+                    <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f1f5f9;">
+                        <span style="font-size:0.85rem; color:#334155;">{{ f }}</span>
+                        <div>
+                            <a href="/static/uploads/{{ f }}" target="_blank" class="btn-view">View</a>
+                            <a href="/delete/{{ f }}" class="btn-del" onclick="return confirm('Delete this file permanently?')">Delete</a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% if not files %}<p style="color:#94a3b8; font-size:0.8rem;">No files on server.</p>{% endif %}
+                </div>
+            </div>
+
+            <div class="card">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <h4 style="margin:0;">📡 Active Node History</h4>
+                    <a href="/clear_activity_logs" 
+                       class="btn-clear" 
+                       onclick="return confirm('Are you sure you want to wipe all activity history?')">
+                       Clear History
+                    </a>
+                </div>
+                <div style="max-height: 250px; overflow-y: auto;">
+                    <table class="log-table">
+                        <thead>
+                            <tr><th>Name</th><th>Phone</th><th>Duration</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for r in receivers %}
+                            <tr>
+                                <td><b>{{ r.name }}</b></td>
+                                <td>{{ r.phone }}</td>
+                                <td><span class="badge-red" style="background:#dcfce7; color:#166534;">{{ r.duration }}m</span></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% if not receivers %}
+                        <p style="color:#94a3b8; font-size:0.8rem; text-align:center; padding-top:20px;">History is empty.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card" style="border: 1px solid #fecaca; background: #fff1f2;">
+                <h4 style="margin-top:0; color:#b91c1c;">🚨 Security Audit: Failed Logins</h4>
+                <div style="max-height: 250px; overflow-y: auto;">
+                    <table class="log-table">
+                        <thead>
+                            <tr><th>Role Target</th><th>Intruder IP</th><th>Time</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for log in failed_logs %}
+                            <tr>
+                                <td style="text-transform: uppercase; font-weight:bold;">{{ log.role_tried }}</td>
+                                <td>{{ log.ip }}</td>
+                                <td>{{ log.timestamp.split(' ')[1] }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% if not failed_logs %}<p style="color:#991b1b; font-size:0.8rem;">No threats detected.</p>{% endif %}
+                </div>
+            </div>
+
+        </div> 
+    </div>
+
+</body>
+</html>

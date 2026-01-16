@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head><link rel="stylesheet" href="/static/css/style.css"></head>
+<body>
+    <div class="container">
+        <h2>Secure Login</h2>
+        <form action="/auth" method="post">
+            <select name="role" id="roleSelector" onchange="checkRole()">
+                <option value="sender">Login as Sender</option>
+                <option value="receiver">Login as Receiver</option>
+                <option value="admin">Login as Admin</option>
+            </select>
+            
+            <div id="receiverData" style="display:none; margin: 10px 0; border: 1px solid #4a90e2; padding: 10px; border-radius: 8px;">
+                <input type="text" name="name" id="nameInp" placeholder="Enter Full Name">
+                <input type="text" name="phone" id="phoneInp" placeholder="Enter Phone Number">
+            </div>
+
+            <input type="password" name="password" placeholder="Password" required>
+            <button type="submit" class="btn">Access System</button>
+        </form>
+    </div>
+    <script>
+        function checkRole() {
+            const role = document.getElementById('roleSelector').value;
+            const div = document.getElementById('receiverData');
+            const n = document.getElementById('nameInp');
+            const p = document.getElementById('phoneInp');
+            
+            if (role === 'receiver') {
+                div.style.display = 'block';
+                n.required = true; p.required = true;
+            } else {
+                div.style.display = 'none';
+                n.required = false; p.required = false;
+            }
+        }
+    </script>
+</body>
+</html>

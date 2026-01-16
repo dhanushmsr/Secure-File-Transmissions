@@ -1,0 +1,194 @@
+/* --- Base Styles & Layout --- */
+body {
+    margin: 0;
+    background-color: #f0f4f8;
+    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    color: #333;
+}
+
+.container {
+    background: #ffffff;
+    padding: 40px;
+    border-radius: 24px;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.08);
+    width: 90%;
+    max-width: 450px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+/* --- Status Bar & Connection Indicator --- */
+.status-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #555;
+    background: #f8fafc;
+    padding: 8px;
+    border-radius: 50px;
+}
+
+.indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background-color: #ff5e5e; /* Default Offline Red */
+    transition: all 0.4s ease;
+}
+
+.indicator.online {
+    background-color: #2ecc71; /* Online Green */
+    box-shadow: 0 0 10px rgba(46, 204, 113, 0.6);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.2); opacity: 0.7; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+/* --- Form Elements --- */
+input, select {
+    width: 100%;
+    padding: 14px;
+    margin: 10px 0;
+    border: 1px solid #e1e8ed;
+    border-radius: 12px;
+    font-size: 16px;
+    box-sizing: border-box;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+input:focus {
+    border-color: #4a90e2;
+}
+
+.btn {
+    background: #4a90e2;
+    color: white;
+    border: none;
+    padding: 15px;
+    border-radius: 12px;
+    cursor: pointer;
+    width: 100%;
+    font-weight: bold;
+    font-size: 1rem;
+    transition: background 0.3s, transform 0.1s;
+    display: inline-block;
+    text-decoration: none;
+}
+
+.btn:hover {
+    background: #357abd;
+}
+
+.btn:active {
+    transform: scale(0.98);
+}
+
+.btn-danger {
+    background: #ff5e5e;
+}
+
+.btn-danger:hover {
+    background: #e04a4a;
+}
+
+/* --- File Inventory (Admin Page) --- */
+.file-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    background: #fff;
+    border: 1px solid #edf2f7;
+    border-radius: 12px;
+    margin-bottom: 8px;
+}
+
+/* --- Storage Progress Bar --- */
+.progress-container {
+    width: 100%;
+    height: 10px;
+    background: #edf2f7;
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 10px 0;
+}
+
+.progress-bar {
+    height: 100%;
+    background: #2ecc71;
+    width: 0%; /* Managed by JS */
+    transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* --- Decorative Elements --- */
+.avatar {
+    font-size: 48px;
+    margin-bottom: 15px;
+    display: block;
+}
+
+.floating-shape {
+    position: absolute;
+    width: 150px;
+    height: 150px;
+    background: linear-gradient(135deg, rgba(74, 144, 226, 0.1), rgba(46, 204, 113, 0.1));
+    border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
+    z-index: -1;
+    animation: rotateShape 20s infinite linear;
+}
+
+@keyframes rotateShape {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* --- Video Player Styling --- */
+video {
+    border-radius: 12px;
+    background: #000;
+}
+/* Add this to your existing style.css */
+#actionBar .btn {
+    margin-top: 0; /* Override the default margin */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 0.9rem;
+}
+
+#displayArea {
+    box-shadow: inset 0 0 50px rgba(0,0,0,0.5);
+    border: 2px solid #e1e8ed;
+}
+
+/* Ensure images don't overflow in fullscreen */
+:fullscreen img {
+    max-height: 100vh !important;
+    width: auto !important;
+    margin: auto;
+}
+.unread-glow {
+    box-shadow: 0 0 15px #4a90e2;
+    border: 2px solid #4a90e2 !important;
+    animation: pulse 1.5s infinite;
+}
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}

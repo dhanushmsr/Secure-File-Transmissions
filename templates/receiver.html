@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+</head>
+<body>
+    <div class="container" style="max-width: 850px;">
+        <div class="status-bar">
+            <div id="dot" class="indicator"></div>
+            <span id="stat">SECURE NODE</span>
+            <span style="margin-left:20px; font-weight:bold; color:#4a90e2;">👤 {{ user_name }}</span>
+            <a href="/logout" style="margin-left:auto; color:red; text-decoration:none;">Logout</a>
+        </div>
+        
+        <h2 id="msg">Node Active</h2>
+        <button id="start" class="btn" onclick="init()">Initialize Feed</button>
+
+        <div id="mainView" style="display:none; margin-top:20px;">
+            <div id="displayArea" style="background:#000; border-radius:15px; min-height:400px; display:flex; align-items:center; justify-content:center; overflow:hidden;">
+                <p style="color:white;">Waiting for files...</p>
+            </div>
+            
+            <div id="actions" style="display:none; margin-top:10px; gap:10px;">
+                <a id="dl" href="#" download class="btn" style="background:#22c55e; flex:1; text-decoration:none; display:flex; align-items:center; justify-content:center;">Download</a>
+                <button onclick="document.getElementById('displayArea').requestFullscreen()" class="btn" style="flex:1;">Fullscreen</button>
+            </div>
+            
+            <div style="margin-top:20px; text-align:left;">
+                <h4>💬 Messages</h4>
+                <div id="cBox" style="height:120px; overflow-y:auto; background:#f8fafc; padding:10px; border-radius:8px; border:1px solid #ddd; font-size:0.85rem;"></div>
+            </div>
+        </div>
+    </div>
+    <script>
+        const socket = io();
+        const uName = "{{ user_name }}";
+        const uPhone = "{{ session.get('user_phone') }}";
+
+        function init() {
+            document.getElementById('start').style.display='none';
+            document.getElementById('mainView').style.display='block';
+            new Audio().play().catch(()=>{});
+        }
+
+        socket.on('connect', () => {
+            document.getElementById('dot').classList.add('online');
+            document.getElementById('stat').innerText = "CONNECTED";
+            socket.emit('join_network', { name: uName, phone: uPhone });
+            setInterval(() => socket.emit('heartbeat', { name: uName, phone: uPhone }), 30000);
+        });
+
+        socket.on('notify_receiver', d => {
+            document.getElementById('actions').style.display = 'flex';
+            document.getElementById('dl').href = "/static/uploads/" + d.filename;
+            const ext = d.filename.split('.').pop().toLowerCase();
+            const path = "/static/uploads/" + d.filename;
+            let h = "";
+            if(['mp4'].includes(ext)) h=`<video width="100%" autoplay controls src="${path}"></video>`;
+            else if(['jpg','png','jpeg'].includes(ext)) h=`<img src="${path}" style="width:100%">`;
+            else h=`<iframe src="${path}" width="100%" height="450px"></iframe>`;
+            document.getElementById('displayArea').innerHTML = h;
+            if(['mp4','jpg'].includes(ext)) setTimeout(()=>document.getElementById('displayArea').requestFullscreen(), 1000);
+        });
+
+        socket.on('new_message', d => {
+            const b = document.getElementById('cBox');
+            b.innerHTML += `<div><b>${d.user}:</b> ${d.msg}</div>`;
+            b.scrollTop = b.scrollHeight;
+        });
+    </script>
+</body>
+</html>

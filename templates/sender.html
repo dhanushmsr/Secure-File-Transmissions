@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head><link rel="stylesheet" href="/static/css/style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script></head>
+<body>
+    <div class="container">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h2>Sender Node</h2>
+            <a href="/logout" style="color:red; text-decoration:none; font-weight:bold;">Logout</a>
+        </div>
+
+        <div style="background:#f1f5f9; padding:15px; border-radius:10px; margin-top:15px;">
+            <label>Target Node:</label>
+            <select id="targetSelect" style="margin-bottom:10px;">
+                <option value="all">Broadcast to All</option>
+                {% for r in receivers %}
+                <option value="room_{{ r.phone }}">{{ r.name }} ({{ r.phone }})</option>
+                {% endfor %}
+            </select>
+            <button onclick="testLink()" class="btn" style="background:#6366f1; margin:0;">⚡ Test Connection</button>
+        </div>
+
+        <form action="/upload" method="post" enctype="multipart/form-data" style="margin-top:20px;">
+            <input type="hidden" name="target_receiver" id="hiddenTarget" value="all">
+            <input type="file" name="file" required>
+            <button type="submit" class="btn" onclick="document.getElementById('hiddenTarget').value = document.getElementById('targetSelect').value">Start Transmission</button>
+        </form>
+
+        <div id="chatBox" style="height:120px; overflow-y:auto; background:#fff; border:1px solid #ddd; margin-top:20px; padding:10px; font-size:0.8rem; text-align:left;"></div>
+        <div style="display:flex; gap:5px; margin-top:5px;">
+            <input type="text" id="mInp" placeholder="Send a message..." style="flex:1;">
+            <button onclick="sendMsg()" class="btn" style="width:auto; margin:0;">Send</button>
+        </div>
+    </div>
+    <script>
+        const socket = io();
+        function testLink() {
+            const t = document.getElementById('targetSelect').value;
+            socket.emit('test_connection', { target: t });
+            alert("Test signal sent to " + t);
+        }
+        function sendMsg() {
+            const m = document.getElementById('mInp').value;
+            const t = document.getElementById('targetSelect').value;
+            if(m) { socket.emit('send_message', { msg: m, target: t }); document.getElementById('mInp').value=""; }
+        }
+        socket.on('new_message', d => {
+            document.getElementById('chatBox').innerHTML += `<div><b>${d.user}:</b> ${d.msg}</div>`;
+        });
+        socket.on('update_user_list', d => {
+            const s = document.getElementById('targetSelect');
+            const o = document.createElement('option');
+            o.value = "room_" + d.phone; o.text = d.name + " (" + d.phone + ")";
+            s.appendChild(o);
+        });
+    </script>
+</body>
+</html>

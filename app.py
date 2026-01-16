@@ -1,0 +1,163 @@
+import os, sqlite3, psutil, time, threading
+from flask import Flask, render_template, request, redirect, url_for, session
+from flask_socketio import SocketIO, emit, join_room
+
+app = Flask(__name__)
+app.secret_key = "secure_transmission_ultra_2026"
+socketio = SocketIO(app, cors_allowed_origins="*")
+UPLOAD_FOLDER = 'static/uploads'
+
+# --- Database Core ---
+def get_db():
+    conn = sqlite3.connect('transmission_system.db')
+    conn.row_factory = sqlite3.Row
+    return conn
+
+def init_db():
+    with get_db() as conn:
+        conn.execute('CREATE TABLE IF NOT EXISTS users (role TEXT PRIMARY KEY, password TEXT)')
+        conn.execute('''CREATE TABLE IF NOT EXISTS active_receivers 
+                        (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, phone TEXT, 
+                         login_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP, 
+                         last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
+        conn.execute('''CREATE TABLE IF NOT EXISTS security_logs 
+                        (id INTEGER PRIMARY KEY AUTOINCREMENT, role_tried TEXT, ip TEXT, 
+                         timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM users")
+        if cursor.fetchone()[0] == 0:
+            conn.execute("INSERT INTO users VALUES ('sender', 'sender123'), ('receiver', 'receiver123'), ('admin', 'admin123')")
+        conn.commit()
+
+# --- Background Task: 24h File Expiry ---
+def auto_cleanup():
+    while True:
+        now = time.time()
+        if os.path.exists(UPLOAD_FOLDER):
+            for f in os.listdir(UPLOAD_FOLDER):
+                path = os.path.join(UPLOAD_FOLDER, f)
+                if os.path.isfile(path) and os.stat(path).st_mtime < now - 86400:
+                    try: os.remove(path)
+                    except: pass
+        time.sleep(3600)
+
+threading.Thread(target=auto_cleanup, daemon=True).start()
+
+# --- WebSocket Events ---
+@socketio.on('join_network')
+def on_join(data):
+    room = f"room_{data.get('phone')}"
+    join_room(room)
+
+@socketio.on('heartbeat')
+def handle_heartbeat(data):
+    with get_db() as conn:
+        conn.execute('UPDATE active_receivers SET last_seen = CURRENT_TIMESTAMP WHERE name=? AND phone=?', 
+                     (data.get('name'), data.get('phone')))
+        conn.commit()
+
+@socketio.on('send_message')
+def handle_message(data):
+    target = data.get('target')
+    msg_payload = {'user': session.get('user_name', session.get('role', 'Sender')).capitalize(), 'msg': data.get('msg'), 'time': time.strftime('%H:%M')}
+    if target == "all": socketio.emit('new_message', msg_payload)
+    else:
+        socketio.emit('new_message', msg_payload, room=target)
+        emit('new_message', msg_payload)
+
+# --- Routes ---
+@app.route('/')
+def login_page():
+    if 'role' in session: return redirect(url_for(session['role']))
+    return render_template('login.html', error=request.args.get('error'))
+
+@app.route('/auth', methods=['POST'])
+def auth():
+    role, password = request.form.get('role'), request.form.get('password')
+    name, phone = request.form.get('name', ''), request.form.get('phone', '')
+    with get_db() as conn:
+        user = conn.execute('SELECT * FROM users WHERE role=? AND password=?', (role, password)).fetchone()
+        if user:
+            session['role'] = role
+            if role == 'receiver':
+                session['user_name'], session['user_phone'] = name, phone
+                conn.execute('INSERT INTO active_receivers (name, phone) VALUES (?, ?)', (name, phone))
+                conn.commit()
+                socketio.emit('update_user_list', {'name': name, 'phone': phone})
+            return redirect(url_for(role))
+        else:
+            conn.execute('INSERT INTO security_logs (role_tried, ip) VALUES (?, ?)', (role, request.remote_addr))
+            conn.commit()
+            return redirect(url_for('login_page', error='true'))
+
+@app.route('/admin')
+def admin():
+    if session.get('role') != 'admin': return redirect('/')
+    files = os.listdir(UPLOAD_FOLDER) if os.path.exists(UPLOAD_FOLDER) else []
+    total_size = sum(os.path.getsize(os.path.join(UPLOAD_FOLDER, f)) for f in files if os.path.isfile(os.path.join(UPLOAD_FOLDER, f)))
+    used_mb = round(total_size / (1024 * 1024), 2)
+    health = {"cpu": psutil.cpu_percent(), "ram": psutil.virtual_memory().percent}
+    with get_db() as conn:
+        receivers = conn.execute('''SELECT *, (strftime('%s', last_seen) - strftime('%s', login_time)) / 60 as duration 
+                                    FROM active_receivers ORDER BY login_time DESC''').fetchall()
+        failed_logs = conn.execute('SELECT * FROM security_logs ORDER BY timestamp DESC LIMIT 10').fetchall()
+    return render_template('admin.html', files=files, used_mb=used_mb, percent=min((used_mb/500)*100, 100), receivers=receivers, health=health, failed_logs=failed_logs)
+
+# NEW: Route to clear activity logs
+@app.route('/clear_activity_logs')
+def clear_activity_logs():
+    if session.get('role') == 'admin':
+        with get_db() as conn: 
+            conn.execute('DELETE FROM active_receivers')
+            conn.commit()
+    return redirect(url_for('admin'))
+
+@app.route('/update_passwords', methods=['POST'])
+def update_passwords():
+    if session.get('role') != 'admin': return redirect('/')
+    with get_db() as conn:
+        conn.execute('UPDATE users SET password = ? WHERE role = ?', (request.form.get('new_password'), request.form.get('target_role')))
+        conn.commit()
+    return redirect(url_for('admin', pass_success='true'))
+
+@app.route('/receiver')
+def receiver():
+    if session.get('role') != 'receiver': return redirect('/')
+    return render_template('receiver.html', user_name=session.get('user_name'))
+
+@app.route('/sender')
+def sender():
+    if session.get('role') != 'sender': return redirect('/')
+    with get_db() as conn:
+        receivers = conn.execute('SELECT DISTINCT name, phone FROM active_receivers').fetchall()
+    return render_template('sender.html', receivers=receivers)
+
+@app.route('/upload', methods=['POST'])
+def upload():
+    file = request.files.get('file')
+    target = request.form.get('target_receiver')
+    if file:
+        filename = "".join([c for c in file.filename if c.isalnum() or c in ('.', '_')]).strip()
+        file.save(os.path.join(UPLOAD_FOLDER, filename))
+        socketio.emit('notify_receiver', {'filename': filename}, room=None if target == "all" else target)
+        return redirect(url_for('sender', success='true'))
+    return redirect(url_for('sender'))
+
+@app.route('/delete/<filename>')
+def delete_file(filename):
+    if session.get('role') == 'admin':
+        path = os.path.join(UPLOAD_FOLDER, filename)
+        if os.path.exists(path): os.remove(path)
+    return redirect(url_for('admin'))
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('login_page'))
+
+if __name__ == '__main__':
+    init_db()
+    if not os.path.exists(UPLOAD_FOLDER): os.makedirs(UPLOAD_FOLDER)
+    # Render provides the PORT environment variable
+    port = int(os.environ.get('PORT', 5000))
+    socketio.run(app, host='0.0.0.0', port=port)
