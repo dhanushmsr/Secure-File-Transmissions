@@ -158,6 +158,6 @@ def logout():
 if __name__ == '__main__':
     init_db()
     if not os.path.exists(UPLOAD_FOLDER): os.makedirs(UPLOAD_FOLDER)
-    # Render provides the PORT environment variable
     port = int(os.environ.get('PORT', 5000))
-    socketio.run(app, host='0.0.0.0', port=port)
+    # Add debug=True and use_reloader=False for EC2
+    socketio.run(app, host='0.0.0.0', port=port, debug=True, use_reloader=False)
