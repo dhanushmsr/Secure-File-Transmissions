@@ -4,7 +4,8 @@ from flask_socketio import SocketIO, emit, join_room
 
 app = Flask(__name__)
 app.secret_key = "secure_transmission_ultra_2026"
-# Increase upload limit for 100MB as requested previously
+
+# Support for 100MB uploads
 app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024 
 socketio = SocketIO(app, cors_allowed_origins="*")
 UPLOAD_FOLDER = 'static/uploads'
@@ -39,8 +40,10 @@ def auto_cleanup():
             for f in os.listdir(UPLOAD_FOLDER):
                 path = os.path.join(UPLOAD_FOLDER, f)
                 if os.path.isfile(path) and os.stat(path).st_mtime < now - 86400:
-                    try: os.remove(path)
-                    except: pass
+                    try: 
+                        os.remove(path)
+                    except: 
+                        pass
         time.sleep(3600)
 
 threading.Thread(target=auto_cleanup, daemon=True).start()
@@ -61,8 +64,16 @@ def handle_heartbeat(data):
 @socketio.on('send_message')
 def handle_message(data):
     target = data.get('target')
-    msg_payload = {'user': session.get('user_name', session.get('role', 'Sender')).capitalize(), 'msg': data.get('msg'), 'time': time.strftime('%H:%M')}
-    if target == "all": socketio.emit('new_message', msg_payload)
+    # Automatically uses the logged-in user's name or Role for the label
+    display_name = session.get('user_name', session.get('role', 'Sender')).capitalize()
+    msg_payload = {
+        'user': display_name, 
+        'msg': data.get('msg'), 
+        'time': time.strftime('%H:%M')
+    }
+    
+    if target == "all": 
+        socketio.emit('new_message', msg_payload)
     else:
         socketio.emit('new_message', msg_payload, room=target)
         emit('new_message', msg_payload)
@@ -144,28 +155,6 @@ def upload():
         return redirect(url_for('sender', success='true'))
     return redirect(url_for('sender'))
 
-# --- NEW: Reply Route for Receivers ---
-@app.route('/reply', methods=['POST'])
-def reply():
-    if session.get('role') != 'receiver': return redirect('/')
-    file = request.files.get('file')
-    if file:
-        # Prefix filename to identify it as a reply in the Admin panel
-        filename = f"REPLY_FROM_{session.get('user_name')}_" + "".join([c for c in file.filename if c.isalnum() or c in ('.', '_')]).strip()
-        file.save(os.path.join(UPLOAD_FOLDER, filename))
-        
-        # Broadcast a notification that a reply has been uploaded
-        msg_payload = {
-            'user': session.get('user_name').capitalize(), 
-            'msg': f"Sent a secure reply file: {filename}", 
-            'time': time.strftime('%H:%M')
-        }
-        socketio.emit('new_message', msg_payload) # Post to chat
-        socketio.emit('notify_sender', {'filename': filename, 'from': session.get('user_name')})
-        
-        return redirect(url_for('receiver', reply_success='true'))
-    return redirect(url_for('receiver'))
-
 @app.route('/delete/<filename>')
 def delete_file(filename):
     if session.get('role') == 'admin':
@@ -181,6 +170,6 @@ def logout():
 if __name__ == '__main__':
     init_db()
     if not os.path.exists(UPLOAD_FOLDER): os.makedirs(UPLOAD_FOLDER)
+    # This ensures it works on local (5000) or Cloud platforms like Render/AWS
     port = int(os.environ.get('PORT', 5000))
-    # Add debug=True and use_reloader=False for EC2
-    socketio.run(app, host='0.0.0.0', port=port, debug=True, use_reloader=False)
+    socketio.run(app, host='0.0.0.0', port=port)
