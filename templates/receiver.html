@@ -1,42 +1,42 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Secure Receiver Node</title>
     <link rel="stylesheet" href="/static/css/style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <style>
-        /* New styles for the reply section */
-        .reply-card {
+        .compose-area {
+            margin-top: 25px;
+            padding: 20px;
             background: #ffffff;
             border: 1px solid #e2e8f0;
             border-radius: 12px;
-            padding: 20px;
-            margin-top: 25px;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
-        .reply-form {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-        .file-input {
-            padding: 10px;
-            border: 2px dashed #cbd5e1;
+        #replyInput {
+            width: 100%;
+            height: 150px; /* Large height to see what you type */
+            padding: 15px;
             border-radius: 8px;
-            cursor: pointer;
+            border: 1px solid #cbd5e1;
+            font-family: inherit;
+            font-size: 1rem;
+            resize: vertical;
+            outline: none;
+            margin-bottom: 10px;
         }
-        .reply-btn {
+        #replyInput:focus { border-color: #4a90e2; box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1); }
+        .send-btn {
+            width: 100%;
+            padding: 12px;
             background: #4a90e2;
             color: white;
             border: none;
-            padding: 12px;
             border-radius: 8px;
             font-weight: bold;
             cursor: pointer;
-            transition: background 0.3s;
+            transition: 0.3s;
         }
-        .reply-btn:hover { background: #357abd; }
-        .success-msg { color: #059669; font-size: 0.9rem; margin-top: 5px; display: none; }
+        .send-btn:hover { background: #357abd; }
     </style>
 </head>
 <body>
@@ -60,20 +60,16 @@
                 <a id="dl" href="#" download class="btn" style="background:#22c55e; flex:1; text-decoration:none; display:flex; align-items:center; justify-content:center;">Download</a>
                 <button onclick="document.getElementById('displayArea').requestFullscreen()" class="btn" style="flex:1;">Fullscreen</button>
             </div>
-
-            <div class="reply-card">
-                <h4>📤 Secure Reply Back</h4>
-                <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 10px;">Send a secure file or image back to the network.</p>
-                <form class="reply-form" action="/reply" method="post" enctype="multipart/form-data">
-                    <input type="file" name="file" class="file-input" required>
-                    <button type="submit" class="reply-btn">Encrypt & Send Reply</button>
-                </form>
-                <div id="replyStatus" class="success-msg">✅ Reply sent successfully!</div>
-            </div>
             
             <div style="margin-top:20px; text-align:left;">
                 <h4>💬 Messages</h4>
-                <div id="cBox" style="height:120px; overflow-y:auto; background:#f8fafc; padding:10px; border-radius:8px; border:1px solid #ddd; font-size:0.85rem;"></div>
+                <div id="cBox" style="height:150px; overflow-y:auto; background:#f8fafc; padding:10px; border-radius:8px; border:1px solid #ddd; font-size:0.85rem; margin-bottom:15px;"></div>
+                
+                <div class="compose-area">
+                    <h4>📤 Compose Secure Reply</h4>
+                    <textarea id="replyInput" placeholder="Type your multi-line message here..."></textarea>
+                    <button onclick="sendReply()" class="send-btn">Send Message to Sender</button>
+                </div>
             </div>
         </div>
     </div>
@@ -83,22 +79,22 @@
         const uName = "{{ user_name }}";
         const uPhone = "{{ session.get('user_phone') }}";
 
-        // Check for success message in URL
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.has('reply_success')) {
-            // We can't show it immediately because mainView is hidden until init()
-            // So we show it after the user clicks "Initialize"
-            window.onload = () => {
-                if(urlParams.get('reply_success') === 'true') {
-                    alert("Reply transmitted successfully!");
-                }
-            };
-        }
-
         function init() {
             document.getElementById('start').style.display='none';
             document.getElementById('mainView').style.display='block';
-            new Audio().play().catch(()=>{});
+        }
+
+        function sendReply() {
+            const input = document.getElementById('replyInput');
+            const message = input.value.trim();
+            if (message !== "") {
+                socket.emit('send_message', {
+                    target: 'all',
+                    msg: message
+                });
+                input.value = "";
+                alert("Message broadcasted!");
+            }
         }
 
         socket.on('connect', () => {
@@ -118,12 +114,11 @@
             else if(['jpg','png','jpeg'].includes(ext)) h=`<img src="${path}" style="width:100%">`;
             else h=`<iframe src="${path}" width="100%" height="450px"></iframe>`;
             document.getElementById('displayArea').innerHTML = h;
-            if(['mp4','jpg'].includes(ext)) setTimeout(()=>document.getElementById('displayArea').requestFullscreen(), 1000);
         });
 
         socket.on('new_message', d => {
             const b = document.getElementById('cBox');
-            b.innerHTML += `<div><b>${d.user}:</b> ${d.msg}</div>`;
+            b.innerHTML += `<div><b>${d.user}:</b> ${d.msg} <small style="color:gray;">(${d.time})</small></div>`;
             b.scrollTop = b.scrollHeight;
         });
     </script>
