@@ -4,6 +4,8 @@ from flask_socketio import SocketIO, emit, join_room
 
 app = Flask(__name__)
 app.secret_key = "secure_transmission_ultra_2026"
+# Increase upload limit for 100MB as requested previously
+app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024 
 socketio = SocketIO(app, cors_allowed_origins="*")
 UPLOAD_FOLDER = 'static/uploads'
 
@@ -103,7 +105,6 @@ def admin():
         failed_logs = conn.execute('SELECT * FROM security_logs ORDER BY timestamp DESC LIMIT 10').fetchall()
     return render_template('admin.html', files=files, used_mb=used_mb, percent=min((used_mb/500)*100, 100), receivers=receivers, health=health, failed_logs=failed_logs)
 
-# NEW: Route to clear activity logs
 @app.route('/clear_activity_logs')
 def clear_activity_logs():
     if session.get('role') == 'admin':
@@ -142,6 +143,28 @@ def upload():
         socketio.emit('notify_receiver', {'filename': filename}, room=None if target == "all" else target)
         return redirect(url_for('sender', success='true'))
     return redirect(url_for('sender'))
+
+# --- NEW: Reply Route for Receivers ---
+@app.route('/reply', methods=['POST'])
+def reply():
+    if session.get('role') != 'receiver': return redirect('/')
+    file = request.files.get('file')
+    if file:
+        # Prefix filename to identify it as a reply in the Admin panel
+        filename = f"REPLY_FROM_{session.get('user_name')}_" + "".join([c for c in file.filename if c.isalnum() or c in ('.', '_')]).strip()
+        file.save(os.path.join(UPLOAD_FOLDER, filename))
+        
+        # Broadcast a notification that a reply has been uploaded
+        msg_payload = {
+            'user': session.get('user_name').capitalize(), 
+            'msg': f"Sent a secure reply file: {filename}", 
+            'time': time.strftime('%H:%M')
+        }
+        socketio.emit('new_message', msg_payload) # Post to chat
+        socketio.emit('notify_sender', {'filename': filename, 'from': session.get('user_name')})
+        
+        return redirect(url_for('receiver', reply_success='true'))
+    return redirect(url_for('receiver'))
 
 @app.route('/delete/<filename>')
 def delete_file(filename):
