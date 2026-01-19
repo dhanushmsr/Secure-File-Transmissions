@@ -1,8 +1,43 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <title>Secure Receiver Node</title>
     <link rel="stylesheet" href="/static/css/style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <style>
+        /* New styles for the reply section */
+        .reply-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 25px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .reply-form {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .file-input {
+            padding: 10px;
+            border: 2px dashed #cbd5e1;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .reply-btn {
+            background: #4a90e2;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .reply-btn:hover { background: #357abd; }
+        .success-msg { color: #059669; font-size: 0.9rem; margin-top: 5px; display: none; }
+    </style>
 </head>
 <body>
     <div class="container" style="max-width: 850px;">
@@ -25,6 +60,16 @@
                 <a id="dl" href="#" download class="btn" style="background:#22c55e; flex:1; text-decoration:none; display:flex; align-items:center; justify-content:center;">Download</a>
                 <button onclick="document.getElementById('displayArea').requestFullscreen()" class="btn" style="flex:1;">Fullscreen</button>
             </div>
+
+            <div class="reply-card">
+                <h4>📤 Secure Reply Back</h4>
+                <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 10px;">Send a secure file or image back to the network.</p>
+                <form class="reply-form" action="/reply" method="post" enctype="multipart/form-data">
+                    <input type="file" name="file" class="file-input" required>
+                    <button type="submit" class="reply-btn">Encrypt & Send Reply</button>
+                </form>
+                <div id="replyStatus" class="success-msg">✅ Reply sent successfully!</div>
+            </div>
             
             <div style="margin-top:20px; text-align:left;">
                 <h4>💬 Messages</h4>
@@ -32,10 +77,23 @@
             </div>
         </div>
     </div>
+
     <script>
         const socket = io();
         const uName = "{{ user_name }}";
         const uPhone = "{{ session.get('user_phone') }}";
+
+        // Check for success message in URL
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('reply_success')) {
+            // We can't show it immediately because mainView is hidden until init()
+            // So we show it after the user clicks "Initialize"
+            window.onload = () => {
+                if(urlParams.get('reply_success') === 'true') {
+                    alert("Reply transmitted successfully!");
+                }
+            };
+        }
 
         function init() {
             document.getElementById('start').style.display='none';
