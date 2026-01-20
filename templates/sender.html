@@ -1,7 +1,9 @@
 <!DOCTYPE html>
 <html>
-<head><link rel="stylesheet" href="/static/css/style.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script></head>
+<head>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+</head>
 <body>
     <div class="container">
         <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -22,36 +24,71 @@
 
         <form action="/upload" method="post" enctype="multipart/form-data" style="margin-top:20px;">
             <input type="hidden" name="target_receiver" id="hiddenTarget" value="all">
-            <input type="file" name="file" required>
+            <div style="border: 2px dashed #cbd5e1; padding: 15px; border-radius: 8px; margin-bottom: 10px;">
+                <input type="file" name="file" required style="width: 100%;">
+            </div>
             <button type="submit" class="btn" onclick="document.getElementById('hiddenTarget').value = document.getElementById('targetSelect').value">Start Transmission</button>
         </form>
 
-        <div id="chatBox" style="height:120px; overflow-y:auto; background:#fff; border:1px solid #ddd; margin-top:20px; padding:10px; font-size:0.8rem; text-align:left;"></div>
+        <div id="chatBox" style="height:150px; overflow-y:auto; background:#fff; border:1px solid #ddd; margin-top:20px; padding:10px; font-size:0.85rem; text-align:left; border-radius: 8px;"></div>
+        
         <div style="display:flex; gap:5px; margin-top:5px;">
-            <input type="text" id="mInp" placeholder="Send a message..." style="flex:1;">
+            <input type="text" id="mInp" placeholder="Send a message..." style="flex:1; padding: 10px; border-radius: 5px; border: 1px solid #ccc;">
             <button onclick="sendMsg()" class="btn" style="width:auto; margin:0;">Send</button>
         </div>
     </div>
+
     <script>
         const socket = io();
+
         function testLink() {
             const t = document.getElementById('targetSelect').value;
             socket.emit('test_connection', { target: t });
             alert("Test signal sent to " + t);
         }
+
         function sendMsg() {
             const m = document.getElementById('mInp').value;
             const t = document.getElementById('targetSelect').value;
-            if(m) { socket.emit('send_message', { msg: m, target: t }); document.getElementById('mInp').value=""; }
+            if(m.trim() !== "") { 
+                socket.emit('send_message', { msg: m, target: t }); 
+                document.getElementById('mInp').value = ""; 
+            }
         }
-        socket.on('new_message', d => {
-            document.getElementById('chatBox').innerHTML += `<div><b>${d.user}:</b> ${d.msg}</div>`;
+
+        // Handle ENTER key for messages
+        document.getElementById('mInp').addEventListener("keypress", function(e) {
+            if (e.key === "Enter") sendMsg();
         });
+
+        // LISTENER: This makes receiver messages visible
+        socket.on('new_message', d => {
+            const cb = document.getElementById('chatBox');
+            // Adding timestamp and better formatting
+            cb.innerHTML += `<div style="margin-bottom: 5px;">
+                                <span style="color:#4a90e2; font-weight:bold;">${d.user}:</span> 
+                                <span>${d.msg}</span>
+                                <small style="color:#999; float:right;">${d.time || ''}</small>
+                             </div>`;
+            cb.scrollTop = cb.scrollHeight; // Auto-scroll to latest message
+        });
+
+        // LISTENER: For new receivers joining the network
         socket.on('update_user_list', d => {
             const s = document.getElementById('targetSelect');
-            const o = document.createElement('option');
-            o.value = "room_" + d.phone; o.text = d.name + " (" + d.phone + ")";
-            s.appendChild(o);
+            // Avoid duplicates if already in list
+            const existing = Array.from(s.options).some(opt => opt.value === "room_" + d.phone);
+            if (!existing) {
+                const o = document.createElement('option');
+                o.value = "room_" + d.phone; 
+                o.text = d.name + " (" + d.phone + ")";
+                s.appendChild(o);
+            }
+        });
+
+        // Optional: Alert for file-related notifications
+        socket.on('notify_sender', d => {
+            console.log("Transmission update:", d);
         });
     </script>
 </body>
