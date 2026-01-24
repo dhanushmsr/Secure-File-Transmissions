@@ -14,8 +14,11 @@
         .log-table th, .log-table td { text-align: left; padding: 8px; border-bottom: 1px solid #f1f5f9; }
         .btn-view { color: #10b981; text-decoration: none; margin-right: 10px; }
         .btn-del { color: #ef4444; text-decoration: none; }
-        .btn-clear { font-size: 0.7rem; color: #ef4444; text-decoration: none; border: 1px solid #fca5a5; padding: 2px 8px; border-radius: 4px; transition: all 0.2s; }
+        /* Style for Action Buttons */
+        .btn-clear { font-size: 0.7rem; color: #ef4444; text-decoration: none; border: 1px solid #fca5a5; padding: 4px 10px; border-radius: 4px; transition: all 0.2s; display: inline-flex; align-items: center; }
         .btn-clear:hover { background: #ef4444; color: white; }
+        .btn-download { border-color: #0ea5e9; color: #0369a1; background: #f0f9ff; }
+        .btn-download:hover { background: #0ea5e9; color: white; }
         .feedback-msg { font-style: italic; color: #475569; display: block; margin-top: 4px; line-height: 1.4; }
     </style>
 </head>
@@ -92,14 +95,17 @@
                             {% endfor %}
                         </tbody>
                     </table>
-                    {% if not receivers %}
-                        <p style="color:#94a3b8; font-size:0.8rem; text-align:center; padding-top:20px;">History is empty.</p>
-                    {% endif %}
                 </div>
             </div>
 
             <div class="card" style="border: 1px solid #e0f2fe; background: #f0f9ff;">
-                <h4 style="margin-top:0; color:#0369a1;">💬 User Feedback Sessions</h4>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;">
+                    <h4 style="margin:0; color:#0369a1;">💬 User Feedback</h4>
+                    <div style="display:flex; gap:5px;">
+                        <a href="/download_feedback" class="btn-clear btn-download">📥 Download</a>
+                        <a href="/clear_feedback" class="btn-clear" onclick="return confirm('Wipe all feedback messages?')">🗑️ Clear</a>
+                    </div>
+                </div>
                 <div style="max-height: 250px; overflow-y: auto;">
                     <table class="log-table">
                         <thead>
