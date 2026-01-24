@@ -14,7 +14,6 @@
         .log-table th, .log-table td { text-align: left; padding: 8px; border-bottom: 1px solid #f1f5f9; }
         .btn-view { color: #10b981; text-decoration: none; margin-right: 10px; }
         .btn-del { color: #ef4444; text-decoration: none; }
-        /* Style for Action Buttons */
         .btn-clear { font-size: 0.7rem; color: #ef4444; text-decoration: none; border: 1px solid #fca5a5; padding: 4px 10px; border-radius: 4px; transition: all 0.2s; display: inline-flex; align-items: center; }
         .btn-clear:hover { background: #ef4444; color: white; }
         .btn-download { border-color: #0ea5e9; color: #0369a1; background: #f0f9ff; }
@@ -40,7 +39,7 @@
             
             <div class="card">
                 <h4 style="margin-top:0;">🔐 Access Control</h4>
-                <p style="font-size:0.8rem; color:#64748b;">Change credentials for any node. Changes persist after restart.</p>
+                <p style="font-size:0.8rem; color:#64748b;">Update node passwords below.</p>
                 <form action="/update_passwords" method="post">
                     <select name="target_role" style="width:100%; padding:8px; border-radius:6px; border:1px solid #cbd5e1;">
                         <option value="sender">Sender Node</option>
@@ -63,7 +62,7 @@
                         <span style="font-size:0.85rem; color:#334155;">{{ f }}</span>
                         <div>
                             <a href="/static/uploads/{{ f }}" target="_blank" class="btn-view">View</a>
-                            <a href="/delete/{{ f }}" class="btn-del" onclick="return confirm('Delete this file permanently?')">Delete</a>
+                            <a href="/delete/{{ f }}" class="btn-del" onclick="return confirm('Delete file?')">Delete</a>
                         </div>
                     </div>
                     {% endfor %}
@@ -74,11 +73,7 @@
             <div class="card">
                 <div style="display:flex; justify-content:space-between; align-items:center;">
                     <h4 style="margin:0;">📡 Active Node History</h4>
-                    <a href="/clear_activity_logs" 
-                       class="btn-clear" 
-                       onclick="return confirm('Are you sure you want to wipe all activity history?')">
-                       Clear History
-                    </a>
+                    <a href="/clear_activity_logs" class="btn-clear" onclick="return confirm('Wipe activity history?')">Clear Logs</a>
                 </div>
                 <div style="max-height: 250px; overflow-y: auto;">
                     <table class="log-table">
@@ -103,7 +98,7 @@
                     <h4 style="margin:0; color:#0369a1;">💬 User Feedback</h4>
                     <div style="display:flex; gap:5px;">
                         <a href="/download_feedback" class="btn-clear btn-download">📥 Download</a>
-                        <a href="/clear_feedback" class="btn-clear" onclick="return confirm('Wipe all feedback messages?')">🗑️ Clear</a>
+                        <a href="/clear_feedback" class="btn-clear" onclick="return confirm('Clear all messages?')">🗑️ Clear</a>
                     </div>
                 </div>
                 <div style="max-height: 250px; overflow-y: auto;">
@@ -118,19 +113,13 @@
                                     <b>{{ f.sender_name }}</b><br>
                                     <span class="badge-blue">{{ f.role }}</span>
                                 </td>
-                                <td style="vertical-align: top;">
-                                    <span class="feedback-msg">"{{ f.message }}"</span>
-                                </td>
-                                <td style="vertical-align: top; color:#64748b; font-size:0.7rem;">
-                                    {{ f.timestamp.split(' ')[1] }}
-                                </td>
+                                <td style="vertical-align: top;"><span class="feedback-msg">"{{ f.message }}"</span></td>
+                                <td style="vertical-align: top; color:#64748b; font-size:0.7rem;">{{ f.timestamp.split(' ')[1] if ' ' in f.timestamp else f.timestamp }}</td>
                             </tr>
                             {% endfor %}
                         </tbody>
                     </table>
-                    {% if not feedbacks %}
-                        <p style="color:#64748b; font-size:0.8rem; text-align:center; padding-top:20px;">No feedback received yet.</p>
-                    {% endif %}
+                    {% if not feedbacks %}<p style="color:#64748b; font-size:0.8rem; text-align:center; padding-top:20px;">No feedback yet.</p>{% endif %}
                 </div>
             </div>
 
@@ -146,7 +135,7 @@
                             <tr>
                                 <td style="text-transform: uppercase; font-weight:bold;">{{ log.role_tried }}</td>
                                 <td>{{ log.ip }}</td>
-                                <td>{{ log.timestamp.split(' ')[1] }}</td>
+                                <td>{{ log.timestamp.split(' ')[1] if ' ' in log.timestamp else log.timestamp }}</td>
                             </tr>
                             {% endfor %}
                         </tbody>
