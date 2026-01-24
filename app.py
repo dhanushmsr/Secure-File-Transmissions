@@ -5,8 +5,8 @@ from flask_socketio import SocketIO, emit, join_room
 app = Flask(__name__)
 app.secret_key = "secure_transmission_ultra_2026"
 
-# Support for 100MB uploads
-app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024 
+# Support for 500MB uploads as requested in previous sessions
+app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024 
 socketio = SocketIO(app, cors_allowed_origins="*")
 UPLOAD_FOLDER = 'static/uploads'
 
@@ -26,6 +26,14 @@ def init_db():
         conn.execute('''CREATE TABLE IF NOT EXISTS security_logs 
                         (id INTEGER PRIMARY KEY AUTOINCREMENT, role_tried TEXT, ip TEXT, 
                          timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
+        # NEW: Feedback table for Admin review
+        conn.execute('''CREATE TABLE IF NOT EXISTS feedback 
+                        (id INTEGER PRIMARY KEY AUTOINCREMENT, 
+                         sender_name TEXT, 
+                         role TEXT, 
+                         message TEXT, 
+                         timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
+        
         cursor = conn.cursor()
         cursor.execute("SELECT COUNT(*) FROM users")
         if cursor.fetchone()[0] == 0:
@@ -40,10 +48,8 @@ def auto_cleanup():
             for f in os.listdir(UPLOAD_FOLDER):
                 path = os.path.join(UPLOAD_FOLDER, f)
                 if os.path.isfile(path) and os.stat(path).st_mtime < now - 86400:
-                    try: 
-                        os.remove(path)
-                    except: 
-                        pass
+                    try: os.remove(path)
+                    except: pass
         time.sleep(3600)
 
 threading.Thread(target=auto_cleanup, daemon=True).start()
@@ -64,7 +70,6 @@ def handle_heartbeat(data):
 @socketio.on('send_message')
 def handle_message(data):
     target = data.get('target')
-    # Automatically uses the logged-in user's name or Role for the label
     display_name = session.get('user_name', session.get('role', 'Sender')).capitalize()
     msg_payload = {
         'user': display_name, 
@@ -114,7 +119,28 @@ def admin():
         receivers = conn.execute('''SELECT *, (strftime('%s', last_seen) - strftime('%s', login_time)) / 60 as duration 
                                     FROM active_receivers ORDER BY login_time DESC''').fetchall()
         failed_logs = conn.execute('SELECT * FROM security_logs ORDER BY timestamp DESC LIMIT 10').fetchall()
-    return render_template('admin.html', files=files, used_mb=used_mb, percent=min((used_mb/500)*100, 100), receivers=receivers, health=health, failed_logs=failed_logs)
+        # Fetching feedback for admin dashboard
+        feedbacks = conn.execute('SELECT * FROM feedback ORDER BY timestamp DESC').fetchall()
+        
+    return render_template('admin.html', files=files, used_mb=used_mb, percent=min((used_mb/500)*100, 100), 
+                           receivers=receivers, health=health, failed_logs=failed_logs, feedbacks=feedbacks)
+
+@app.route('/submit_feedback', methods=['POST'])
+def submit_feedback():
+    if 'role' not in session: return redirect('/')
+    
+    # Identify who is sending feedback
+    name = session.get('user_name', 'Sender')
+    role = session.get('role')
+    msg = request.form.get('feedback_msg')
+    
+    if msg:
+        with get_db() as conn:
+            conn.execute('INSERT INTO feedback (sender_name, role, message) VALUES (?, ?, ?)', 
+                         (name, role, msg))
+            conn.commit()
+    
+    return redirect(url_for(role, feedback_success='true'))
 
 @app.route('/clear_activity_logs')
 def clear_activity_logs():
@@ -170,6 +196,5 @@ def logout():
 if __name__ == '__main__':
     init_db()
     if not os.path.exists(UPLOAD_FOLDER): os.makedirs(UPLOAD_FOLDER)
-    # This ensures it works on local (5000) or Cloud platforms like Render/AWS
     port = int(os.environ.get('PORT', 5000))
     socketio.run(app, host='0.0.0.0', port=port)
