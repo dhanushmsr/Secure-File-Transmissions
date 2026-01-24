@@ -3,6 +3,44 @@
 <head>
     <link rel="stylesheet" href="/static/css/style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <style>
+        .compose-area {
+            margin-top: 25px;
+            padding: 20px;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        #feedbackInput {
+            width: 100%;
+            height: 80px;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #fcd34d;
+            font-family: inherit;
+            font-size: 0.9rem;
+            resize: vertical;
+            outline: none;
+            margin-bottom: 10px;
+        }
+        #feedbackInput:focus { 
+            border-color: #f59e0b; 
+            box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1); 
+        }
+        .feedback-btn {
+            width: 100%;
+            padding: 10px;
+            background: #f59e0b;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .feedback-btn:hover { background: #d97706; }
+    </style>
 </head>
 <body>
     <div class="container">
@@ -36,6 +74,17 @@
             <input type="text" id="mInp" placeholder="Send a message..." style="flex:1; padding: 10px; border-radius: 5px; border: 1px solid #ccc;">
             <button onclick="sendMsg()" class="btn" style="width:auto; margin:0;">Send</button>
         </div>
+
+        <div class="compose-area" style="background: #fffbeb; border-color: #fde68a; margin-top: 25px;">
+            <h4 style="color: #92400e; margin-top: 0;">📩 System Feedback (Admin Only)</h4>
+            <form action="/submit_feedback" method="post">
+                <textarea id="feedbackInput" name="feedback_msg" placeholder="Share your experience or report issues to the Admin..."></textarea>
+                <button type="submit" class="feedback-btn">Submit Feedback</button>
+            </form>
+            {% if request.args.get('feedback_success') %}
+                <p style="color: #b45309; font-size: 0.8rem; margin-top: 8px; font-weight: bold;">✅ Feedback sent to Admin dashboard!</p>
+            {% endif %}
+        </div>
     </div>
 
     <script>
@@ -56,27 +105,22 @@
             }
         }
 
-        // Handle ENTER key for messages
         document.getElementById('mInp').addEventListener("keypress", function(e) {
             if (e.key === "Enter") sendMsg();
         });
 
-        // LISTENER: This makes receiver messages visible
         socket.on('new_message', d => {
             const cb = document.getElementById('chatBox');
-            // Adding timestamp and better formatting
             cb.innerHTML += `<div style="margin-bottom: 5px;">
                                 <span style="color:#4a90e2; font-weight:bold;">${d.user}:</span> 
                                 <span>${d.msg}</span>
                                 <small style="color:#999; float:right;">${d.time || ''}</small>
                              </div>`;
-            cb.scrollTop = cb.scrollHeight; // Auto-scroll to latest message
+            cb.scrollTop = cb.scrollHeight;
         });
 
-        // LISTENER: For new receivers joining the network
         socket.on('update_user_list', d => {
             const s = document.getElementById('targetSelect');
-            // Avoid duplicates if already in list
             const existing = Array.from(s.options).some(opt => opt.value === "room_" + d.phone);
             if (!existing) {
                 const o = document.createElement('option');
@@ -86,7 +130,6 @@
             }
         });
 
-        // Optional: Alert for file-related notifications
         socket.on('notify_sender', d => {
             console.log("Transmission update:", d);
         });
