@@ -9,13 +9,14 @@
         .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
         .stats-bar { display: flex; gap: 15px; background: #1e293b; color: white; padding: 15px; border-radius: 12px; margin-bottom: 20px; font-size: 0.9rem; }
         .badge-red { background: #fee2e2; color: #ef4444; padding: 2px 8px; border-radius: 4px; font-weight: bold; }
+        .badge-blue { background: #dbeafe; color: #1e40af; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 0.7rem; text-transform: uppercase; }
         .log-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; margin-top: 10px; }
         .log-table th, .log-table td { text-align: left; padding: 8px; border-bottom: 1px solid #f1f5f9; }
         .btn-view { color: #10b981; text-decoration: none; margin-right: 10px; }
         .btn-del { color: #ef4444; text-decoration: none; }
-        /* Style for the Clear History link */
         .btn-clear { font-size: 0.7rem; color: #ef4444; text-decoration: none; border: 1px solid #fca5a5; padding: 2px 8px; border-radius: 4px; transition: all 0.2s; }
         .btn-clear:hover { background: #ef4444; color: white; }
+        .feedback-msg { font-style: italic; color: #475569; display: block; margin-top: 4px; line-height: 1.4; }
     </style>
 </head>
 <body style="background-color: #f8fafc;">
@@ -97,7 +98,37 @@
                 </div>
             </div>
 
-            <div class="card" style="border: 1px solid #fecaca; background: #fff1f2;">
+            <div class="card" style="border: 1px solid #e0f2fe; background: #f0f9ff;">
+                <h4 style="margin-top:0; color:#0369a1;">💬 User Feedback Sessions</h4>
+                <div style="max-height: 250px; overflow-y: auto;">
+                    <table class="log-table">
+                        <thead>
+                            <tr><th>User</th><th>Message</th><th>Time</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for f in feedbacks %}
+                            <tr>
+                                <td style="vertical-align: top;">
+                                    <b>{{ f.sender_name }}</b><br>
+                                    <span class="badge-blue">{{ f.role }}</span>
+                                </td>
+                                <td style="vertical-align: top;">
+                                    <span class="feedback-msg">"{{ f.message }}"</span>
+                                </td>
+                                <td style="vertical-align: top; color:#64748b; font-size:0.7rem;">
+                                    {{ f.timestamp.split(' ')[1] }}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% if not feedbacks %}
+                        <p style="color:#64748b; font-size:0.8rem; text-align:center; padding-top:20px;">No feedback received yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card" style="border: 1px solid #fecaca; background: #fff1f2; grid-column: span 2;">
                 <h4 style="margin-top:0; color:#b91c1c;">🚨 Security Audit: Failed Logins</h4>
                 <div style="max-height: 250px; overflow-y: auto;">
                     <table class="log-table">
