@@ -12,9 +12,8 @@
             border-radius: 12px;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
-        #replyInput {
+        #replyInput, #feedbackInput {
             width: 100%;
-            height: 150px; /* Large height to see what you type */
             padding: 15px;
             border-radius: 8px;
             border: 1px solid #cbd5e1;
@@ -24,7 +23,12 @@
             outline: none;
             margin-bottom: 10px;
         }
+        #replyInput { height: 120px; }
+        #feedbackInput { height: 80px; border-color: #fcd34d; }
+        
         #replyInput:focus { border-color: #4a90e2; box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1); }
+        #feedbackInput:focus { border-color: #f59e0b; box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1); }
+
         .send-btn {
             width: 100%;
             padding: 12px;
@@ -37,6 +41,8 @@
             transition: 0.3s;
         }
         .send-btn:hover { background: #357abd; }
+        .feedback-btn { background: #f59e0b; margin-top: 5px; }
+        .feedback-btn:hover { background: #d97706; }
     </style>
 </head>
 <body>
@@ -70,6 +76,17 @@
                     <textarea id="replyInput" placeholder="Type your multi-line message here..."></textarea>
                     <button onclick="sendReply()" class="send-btn">Send Message to Sender</button>
                 </div>
+
+                <div class="compose-area" style="background: #fffbeb; border-color: #fde68a; margin-top: 15px;">
+                    <h4 style="color: #92400e;">📩 System Feedback (Admin Only)</h4>
+                    <form action="/submit_feedback" method="post">
+                        <textarea id="feedbackInput" name="feedback_msg" placeholder="Report issues or suggest improvements to the Admin..."></textarea>
+                        <button type="submit" class="send-btn feedback-btn">Submit Feedback</button>
+                    </form>
+                    {% if request.args.get('feedback_success') %}
+                        <p style="color: #b45309; font-size: 0.85rem; margin-top: 8px; font-weight: bold;">✅ Feedback delivered to Admin dashboard!</p>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>
@@ -93,7 +110,7 @@
                     msg: message
                 });
                 input.value = "";
-                alert("Message broadcasted!");
+                alert("Message broadcasted to network!");
             }
         }
 
