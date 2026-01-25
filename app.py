@@ -1,5 +1,5 @@
 import os, sqlite3, psutil, time, threading
-from flask import Flask, render_template, request, redirect, url_for, session, Response
+from flask import Flask, render_template, request, redirect, url_for, session, Response, abort
 from flask_socketio import SocketIO, emit, join_room
 
 app = Flask(__name__)
@@ -29,6 +29,10 @@ def init_db():
         conn.execute('''CREATE TABLE IF NOT EXISTS feedback 
                         (id INTEGER PRIMARY KEY AUTOINCREMENT, sender_name TEXT, 
                          role TEXT, message TEXT, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
+        # IPS Table: Blacklisted IPs
+        conn.execute('''CREATE TABLE IF NOT EXISTS blacklist 
+                        (ip TEXT PRIMARY KEY, reason TEXT, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
+        
         cursor = conn.cursor()
         cursor.execute("SELECT COUNT(*) FROM users")
         if cursor.fetchone()[0] == 0:
@@ -65,15 +69,13 @@ def handle_heartbeat(data):
 @socketio.on('send_message')
 def handle_message(data):
     target = data.get('target')
-    # Get proper display name for broadcast
     display_name = session.get('user_name', session.get('role', 'Node')).capitalize()
     msg_payload = {'user': display_name, 'msg': data.get('msg'), 'time': time.strftime('%H:%M')}
-    
     if target == "all": 
         socketio.emit('new_message', msg_payload)
     else:
         socketio.emit('new_message', msg_payload, room=target)
-        emit('new_message', msg_payload) # Feedback to sender
+        emit('new_message', msg_payload)
 
 # --- Routes ---
 @app.route('/')
@@ -85,6 +87,15 @@ def login_page():
 def auth():
     role, password = request.form.get('role'), request.form.get('password')
     name, phone = request.form.get('name', ''), request.form.get('phone', '')
+    user_ip = request.remote_addr
+
+    # 1. IPS Check: Block blacklisted IPs
+    with get_db() as conn:
+        blocked = conn.execute('SELECT * FROM blacklist WHERE ip=?', (user_ip,)).fetchone()
+        if blocked:
+            abort(403, description="Access Denied: Your IP has been flagged for suspicious activity.")
+
+    # 2. Authentication Logic
     with get_db() as conn:
         user = conn.execute('SELECT * FROM users WHERE role=? AND password=?', (role, password)).fetchone()
         if user:
@@ -92,10 +103,11 @@ def auth():
             if role == 'receiver':
                 session['user_name'], session['user_phone'] = name, phone
                 conn.execute('INSERT INTO active_receivers (name, phone) VALUES (?, ?)', (name, phone))
-                conn.commit()
+            conn.commit()
             return redirect(url_for(role))
         else:
-            conn.execute('INSERT INTO security_logs (role_tried, ip) VALUES (?, ?)', (role, request.remote_addr))
+            # Log Failed Attempt for Security Audit
+            conn.execute('INSERT INTO security_logs (role_tried, ip) VALUES (?, ?)', (role, user_ip))
             conn.commit()
             return redirect(url_for('login_page', error='true'))
 
@@ -112,18 +124,25 @@ def admin():
     with get_db() as conn:
         receivers = conn.execute('''SELECT *, (strftime('%s', last_seen) - strftime('%s', login_time)) / 60 as duration 
                                     FROM active_receivers ORDER BY login_time DESC''').fetchall()
-        failed_logs = conn.execute('SELECT * FROM security_logs ORDER BY timestamp DESC LIMIT 10').fetchall()
+        failed_logs = conn.execute('SELECT * FROM security_logs ORDER BY timestamp DESC LIMIT 20').fetchall()
         feedbacks = conn.execute('SELECT * FROM feedback ORDER BY timestamp DESC').fetchall()
         
     return render_template('admin.html', files=files, used_mb=used_mb, 
                            percent=min((used_mb/500)*100, 100), health=health, 
                            receivers=receivers, failed_logs=failed_logs, feedbacks=feedbacks)
 
-# Personalized Innovative Feedback Route
+# IPS: Blacklist IP Route
+@app.route('/blacklist_ip/<ip>')
+def blacklist_ip(ip):
+    if session.get('role') == 'admin':
+        with get_db() as conn:
+            conn.execute('INSERT OR IGNORE INTO blacklist (ip, reason) VALUES (?, ?)', (ip, 'Manual Administrative Block'))
+            conn.commit()
+    return redirect(url_for('admin'))
+
 @app.route('/feedback_page')
 def feedback_page():
     if 'role' not in session: return redirect('/')
-    # Determine the name to display in the header
     display_name = session.get('user_name', session.get('role').capitalize())
     return render_template('feedback.html', user_name=display_name)
 
