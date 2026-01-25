@@ -126,10 +126,13 @@ def admin():
                                     FROM active_receivers ORDER BY login_time DESC''').fetchall()
         failed_logs = conn.execute('SELECT * FROM security_logs ORDER BY timestamp DESC LIMIT 20').fetchall()
         feedbacks = conn.execute('SELECT * FROM feedback ORDER BY timestamp DESC').fetchall()
+        # Fetch blacklisted IPs for the Managed Blacklist section
+        blacklisted_ips = conn.execute('SELECT * FROM blacklist ORDER BY timestamp DESC').fetchall()
         
     return render_template('admin.html', files=files, used_mb=used_mb, 
                            percent=min((used_mb/500)*100, 100), health=health, 
-                           receivers=receivers, failed_logs=failed_logs, feedbacks=feedbacks)
+                           receivers=receivers, failed_logs=failed_logs, 
+                           feedbacks=feedbacks, blacklisted_ips=blacklisted_ips)
 
 # IPS: Blacklist IP Route
 @app.route('/blacklist_ip/<ip>')
@@ -137,6 +140,15 @@ def blacklist_ip(ip):
     if session.get('role') == 'admin':
         with get_db() as conn:
             conn.execute('INSERT OR IGNORE INTO blacklist (ip, reason) VALUES (?, ?)', (ip, 'Manual Administrative Block'))
+            conn.commit()
+    return redirect(url_for('admin'))
+
+# IPS: Unblock IP Route
+@app.route('/unblock_ip/<ip>')
+def unblock_ip(ip):
+    if session.get('role') == 'admin':
+        with get_db() as conn:
+            conn.execute('DELETE FROM blacklist WHERE ip = ?', (ip,))
             conn.commit()
     return redirect(url_for('admin'))
 
