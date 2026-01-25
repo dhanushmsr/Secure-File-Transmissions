@@ -4,16 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="/static/css/style.css">
-    <title>Node Feedback</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <title>Inkwake | Support Node</title>
     <style>
         :root {
-            --glass-bg: rgba(255, 255, 255, 0.1);
-            --glass-border: rgba(255, 255, 255, 0.2);
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
             --accent-glow: #6366f1;
         }
 
         body {
-            background: radial-gradient(circle at top left, #1e293b, #0f172a);
+            background: radial-gradient(circle at top right, #1e293b, #0f172a);
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -25,125 +26,106 @@
 
         .feedback-card {
             background: var(--glass-bg);
-            backdrop-filter: blur(15px);
-            -webkit-backdrop-filter: blur(15px);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             border: 1px solid var(--glass-border);
-            border-radius: 24px;
-            padding: 40px;
+            border-radius: 28px;
+            padding: 50px 40px;
             width: 90%;
-            max-width: 500px;
+            max-width: 480px;
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
             text-align: center;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .feedback-card::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: conic-gradient(from 180deg at 50% 50%, transparent 0deg, var(--accent-glow) 360deg);
-            animation: rotate 10s linear infinite;
-            opacity: 0.1;
-            z-index: -1;
-        }
-
-        @keyframes rotate {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
         }
 
         .user-avatar {
-            width: 80px;
-            height: 80px;
+            width: 70px;
+            height: 70px;
             background: linear-gradient(135deg, #6366f1, #a855f7);
-            border-radius: 50%;
-            margin: 0 auto 20px;
+            border-radius: 20px;
+            margin: 0 auto 25px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 2rem;
-            box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
+            font-size: 1.8rem;
+            transform: rotate(-5deg);
         }
 
-        h2 { margin: 10px 0; font-weight: 700; letter-spacing: -0.5px; }
-        p { color: #94a3b8; margin-bottom: 30px; font-size: 0.95rem; }
+        h2 { 
+            margin: 10px 0; 
+            font-weight: 700; 
+            font-size: 1.6rem;
+            line-height: 1.2;
+        }
+
+        p { color: #94a3b8; margin-bottom: 30px; font-size: 0.9rem; }
 
         textarea {
             width: 100%;
-            background: rgba(0, 0, 0, 0.2);
+            background: rgba(0, 0, 0, 0.3);
             border: 1px solid var(--glass-border);
-            border-radius: 12px;
-            padding: 15px;
+            border-radius: 14px;
+            padding: 18px;
             color: white;
             font-family: inherit;
             resize: none;
-            height: 120px;
+            height: 130px;
             margin-bottom: 20px;
-            transition: border-color 0.3s, box-shadow 0.3s;
+            outline: none;
+            transition: 0.3s;
         }
 
-        textarea:focus {
-            outline: none;
-            border-color: var(--accent-glow);
-            box-shadow: 0 0 15px rgba(99, 102, 241, 0.2);
-        }
+        textarea:focus { border-color: var(--accent-glow); background: rgba(0, 0, 0, 0.4); }
 
         .submit-btn {
             background: #6366f1;
             color: white;
             border: none;
-            padding: 14px 30px;
-            border-radius: 12px;
+            padding: 15px;
+            border-radius: 14px;
             font-weight: 600;
             width: 100%;
             cursor: pointer;
-            transition: transform 0.2s, background 0.3s;
+            transition: 0.3s;
         }
 
-        .submit-btn:hover {
-            background: #4f46e5;
-            transform: translateY(-2px);
-        }
+        .submit-btn:hover { background: #4f46e5; transform: scale(1.02); }
 
         .back-link {
             display: inline-block;
-            margin-top: 20px;
+            margin-top: 25px;
             color: #64748b;
             text-decoration: none;
-            font-size: 0.85rem;
-            transition: color 0.2s;
+            font-size: 0.8rem;
         }
-
-        .back-link:hover { color: #94a3b8; }
     </style>
 </head>
 <body>
 
     <div class="feedback-card">
         <div class="user-avatar">
-            {% if session.get('role') == 'receiver' %} 📥 {% else %} 📤 {% endif %}
+            {% if session.get('role') == 'receiver' %}
+                <i class="fa-solid fa-download"></i>
+            {% else %}
+                <i class="fa-solid fa-upload"></i>
+            {% endif %}
         </div>
 
         <h2>
             {% if session.get('role') == 'receiver' %}
-                Hey {{ user_name }}, what problems are you facing?
+                Hey {{ user_name }}, <br>what problems are you facing?
             {% else %}
-                Sender {{ user_name }}, have an issue? Let us know.
+                {{ user_name }}, have an issue? <br>Let us know.
             {% endif %}
         </h2>
 
-        <p>Your feedback helps the Admin optimize the secure network.</p>
+        <p>Your feedback is encrypted and sent directly to the System Admin.</p>
 
         <form action="/submit_feedback" method="post">
-            <textarea name="feedback_msg" placeholder="Describe the issue or suggest an improvement..." required></textarea>
+            <textarea name="feedback_msg" placeholder="Type your message here..." required></textarea>
             <button type="submit" class="submit-btn">Transmit Feedback</button>
         </form>
 
-        <a href="/" class="back-link">← Return to Node Dashboard</a>
+        <a href="/" class="back-link"><i class="fa-solid fa-arrow-left"></i> Back to Dashboard</a>
     </div>
 
 </body>
