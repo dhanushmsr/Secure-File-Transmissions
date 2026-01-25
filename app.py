@@ -100,14 +100,10 @@ def auth():
 @app.route('/admin')
 def admin():
     if session.get('role') != 'admin': return redirect('/')
-    
-    # Storage Stats
     if not os.path.exists(UPLOAD_FOLDER): os.makedirs(UPLOAD_FOLDER)
     files = os.listdir(UPLOAD_FOLDER)
     total_size = sum(os.path.getsize(os.path.join(UPLOAD_FOLDER, f)) for f in files if os.path.isfile(os.path.join(UPLOAD_FOLDER, f)))
     used_mb = round(total_size / (1024 * 1024), 2)
-    
-    # Health Stats
     health = {"cpu": psutil.cpu_percent(), "ram": psutil.virtual_memory().percent}
     
     with get_db() as conn:
@@ -120,6 +116,12 @@ def admin():
                            percent=min((used_mb/500)*100, 100), health=health, 
                            receivers=receivers, failed_logs=failed_logs, feedbacks=feedbacks)
 
+# New: Dedicated Feedback Page Route
+@app.route('/feedback_page')
+def feedback_page():
+    if 'role' not in session: return redirect('/')
+    return render_template('feedback.html', user_name=session.get('user_name', session.get('role')))
+
 @app.route('/submit_feedback', methods=['POST'])
 def submit_feedback():
     if 'role' not in session: return redirect('/')
@@ -131,6 +133,14 @@ def submit_feedback():
             conn.execute('INSERT INTO feedback (sender_name, role, message) VALUES (?, ?, ?)', (name, role, msg))
             conn.commit()
     return redirect(url_for(role, feedback_success='true'))
+
+@app.route('/delete_feedback/<int:id>')
+def delete_feedback(id):
+    if session.get('role') == 'admin':
+        with get_db() as conn:
+            conn.execute('DELETE FROM feedback WHERE id = ?', (id,))
+            conn.commit()
+    return redirect(url_for('admin'))
 
 @app.route('/download_feedback')
 def download_feedback():
@@ -200,5 +210,6 @@ def logout():
 
 if __name__ == '__main__':
     init_db()
+    if not os.path.exists(UPLOAD_FOLDER): os.makedirs(UPLOAD_FOLDER)
     port = int(os.environ.get('PORT', 5000))
     socketio.run(app, host='0.0.0.0', port=port)
