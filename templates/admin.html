@@ -37,6 +37,8 @@
         .btn-action:hover { background: var(--accent); color: white; border-color: var(--accent); }
         .btn-danger { color: #ef4444; border-color: #fca5a5; }
         .btn-danger:hover { background: #ef4444; color: white; }
+        .btn-success { color: #22c55e; border-color: #bbf7d0; }
+        .btn-success:hover { background: #22c55e; color: white; border-color: #22c55e; }
 
         .theme-toggle { background: var(--accent); color: white; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; margin-right: 10px; }
         .badge-status { padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 0.7rem; text-transform: uppercase; }
@@ -101,7 +103,6 @@
                                 <th>Severity</th>
                                 <th>Target Role</th>
                                 <th>Intruder IP</th>
-                                <th>Origin Hint</th>
                                 <th>Timestamp</th>
                                 <th>Countermeasures</th>
                             </tr>
@@ -110,9 +111,8 @@
                             {% for log in failed_logs %}
                             <tr>
                                 <td><span class="badge-status" style="background:#ef4444; color:white;">High Risk</span></td>
-                                <td style="text-transform: uppercase; font-weight: bold;">{{ log.role_tried }}</td>
+                                <td style="text-transform: uppercase;"><b>{{ log.role_tried }}</b></td>
                                 <td style="font-family: monospace;">{{ log.ip }}</td>
-                                <td><i class="fa-solid fa-location-dot"></i> <small>Global Network</small></td>
                                 <td>{{ log.timestamp }}</td>
                                 <td>
                                     <a href="/blacklist_ip/{{ log.ip }}" class="btn-action btn-danger" onclick="return confirm('Block this IP from the Inkwake Network?')">
@@ -123,7 +123,40 @@
                             {% endfor %}
                         </tbody>
                     </table>
-                    {% if not failed_logs %}<p style="text-align:center; padding:20px; color: var(--text-sub);">✅ No unauthorized access attempts detected.</p>{% endif %}
+                </div>
+            </div>
+
+            <div class="card" style="grid-column: span 2; border-left: 5px solid #1e293b;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;">
+                    <h4 style="margin:0; color:var(--text-main);"><i class="fa-solid fa-user-slash"></i> Managed Blacklist</h4>
+                    <span class="badge-status" style="background:#f1f5f9; color:#1e293b;">Blocked Nodes</span>
+                </div>
+                <div style="max-height: 250px; overflow-y: auto;">
+                    <table class="log-table">
+                        <thead>
+                            <tr style="border-bottom: 2px solid var(--border-color);">
+                                <th>Blocked IP</th>
+                                <th>Reason</th>
+                                <th>Banned At</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for b in blacklisted_ips %}
+                            <tr>
+                                <td style="font-family: monospace;"><b>{{ b.ip }}</b></td>
+                                <td>{{ b.reason }}</td>
+                                <td>{{ b.timestamp }}</td>
+                                <td>
+                                    <a href="/unblock_ip/{{ b.ip }}" class="btn-action btn-success" onclick="return confirm('Restore network access for this IP?')">
+                                        <i class="fa-solid fa-unlock"></i> Enable Access
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% if not blacklisted_ips %}<p style="text-align:center; padding:20px; color: var(--text-sub);">Blacklist is currently clean.</p>{% endif %}
                 </div>
             </div>
 
