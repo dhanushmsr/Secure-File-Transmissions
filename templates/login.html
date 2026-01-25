@@ -23,7 +23,7 @@
             transition: transform 0.3s ease;
         }
         
-        /* Shake Animation for Wrong Password */
+        /* Error Shake Animation */
         .shake {
             animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
             border: 2px solid var(--danger);
@@ -37,62 +37,70 @@
         }
 
         .header { text-align: center; margin-bottom: 30px; }
-        .header h2 { margin: 0; color: var(--text-dark); font-weight: 700; }
+        .header h2 { margin: 0; color: var(--text-dark); font-weight: 700; font-size: 1.5rem; }
         
         .input-group { margin-bottom: 20px; position: relative; }
-        input, select { width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 0.95rem; outline: none; box-sizing: border-box; }
-        input:focus { border-color: var(--primary); }
+        .input-group label { display: block; font-size: 0.75rem; font-weight: 700; color: #64748b; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        input, select { width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 0.95rem; outline: none; box-sizing: border-box; transition: 0.2s; }
+        input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1); }
 
         .password-wrapper { position: relative; }
         .toggle-icon { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #94a3b8; }
+        .toggle-icon:hover { color: var(--primary); }
 
-        .btn-access { background: var(--primary); color: white; border: none; padding: 14px; border-radius: 10px; font-weight: 700; width: 100%; cursor: pointer; transition: 0.3s; }
-        .btn-access:hover { background: #357abd; }
+        .btn-access { background: var(--primary); color: white; border: none; padding: 14px; border-radius: 10px; font-weight: 700; width: 100%; cursor: pointer; transition: 0.3s; margin-top: 10px; }
+        .btn-access:hover { background: #357abd; transform: translateY(-1px); }
+
+        .footer { text-align: center; margin-top: 25px; font-size: 0.75rem; color: #94a3b8; font-weight: 500; }
     </style>
 </head>
 <body onload="checkError()">
 
     <div class="login-card" id="loginCard">
         <div class="header">
-            <i class="fa-solid fa-lock" style="font-size: 2.5rem; color: var(--primary); margin-bottom: 10px;"></i>
+            <i class="fa-solid fa-network-wired" style="font-size: 2.5rem; color: var(--primary); margin-bottom: 15px;"></i>
             <h2>Secure Node Login</h2>
         </div>
 
         <form action="/auth" method="post">
             <div class="input-group">
+                <label>Select Network Node</label>
                 <select name="role" id="roleSelector" onchange="checkRole()">
-                    <option value="sender">Sender</option>
-                    <option value="receiver">Receiver</option>
-                    <option value="admin">Administrator</option>
+                    <option value="sender">Sender Node</option>
+                    <option value="receiver">Receiver Node</option>
+                    <option value="admin">Admin Command Node</option>
                 </select>
             </div>
 
             <div id="receiverData" style="display:none; background: #f1f5f9; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+                <label style="margin-bottom:10px; color: var(--primary);">Node Identity</label>
                 <input type="text" name="name" id="nameInp" placeholder="Full Name" style="margin-bottom:10px">
-                <input type="text" name="phone" id="phoneInp" placeholder="Phone Number">
+                <input type="text" name="phone" id="phoneInp" placeholder="Contact Number">
             </div>
 
             <div class="input-group">
+                <label>Access Key</label>
                 <div class="password-wrapper">
-                    <input type="password" name="password" id="passwordField" placeholder="enter password" required>
+                    <input type="password" name="password" id="passwordField" placeholder="Enter Password" required>
                     <i class="fa-solid fa-eye toggle-icon" id="eyeIcon" onclick="togglePassword()"></i>
                 </div>
             </div>
 
-            <button type="submit" class="btn-access">ACCESS SYSTEM</button>
+            <button type="submit" class="btn-access">AUTHENTICATE & ACCESS</button>
         </form>
+
+        <div class="footer">
+            <p><i class="fa-solid fa-shield-check"></i> Encrypted Terminal Session</p>
+        </div>
     </div>
 
     <script>
-        // Alert if wrong password detected via URL parameter
         function checkError() {
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.get('error') === 'true') {
-                // 1. Visual Shake
                 document.getElementById('loginCard').classList.add('shake');
-                
-                // 2. Browser Alert
-                alert("❌ Access Denied: Incorrect Password or Role. Please try again.");
+                alert("❌ Authentication Failed: Invalid Access Key for selected Node.");
             }
         }
 
