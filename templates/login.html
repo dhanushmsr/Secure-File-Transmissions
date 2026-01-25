@@ -5,126 +5,112 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="/static/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <title>Inkwake | Secure Node Login</title>
+    <title>Secure Node Login</title>
     <style>
         :root {
-            --primary: #6366f1;
+            --primary: #4a90e2;
             --bg-soft: #f8fafc;
             --text-dark: #1e293b;
+            --danger: #ef4444;
         }
 
         body { background-color: var(--bg-soft); font-family: 'Inter', sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
         
-        .login-card { background: white; padding: 40px; border-radius: 20px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); width: 100%; max-width: 400px; }
+        .login-card { 
+            background: white; padding: 40px; border-radius: 20px; 
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); 
+            width: 100%; max-width: 400px; 
+            transition: transform 0.3s ease;
+        }
         
-        .brand-header { text-align: center; margin-bottom: 30px; }
-        .brand-header h2 { margin: 0; color: var(--text-dark); font-weight: 800; letter-spacing: -1px; }
+        /* Shake Animation for Wrong Password */
+        .shake {
+            animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+            border: 2px solid var(--danger);
+        }
+
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+
+        .header { text-align: center; margin-bottom: 30px; }
+        .header h2 { margin: 0; color: var(--text-dark); font-weight: 700; }
         
         .input-group { margin-bottom: 20px; position: relative; }
-        .input-group label { display: block; font-size: 0.8rem; font-weight: 600; color: #64748b; margin-bottom: 5px; }
-        
-        input, select { width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 0.95rem; outline: none; transition: border-color 0.2s; box-sizing: border-box; }
-        input:focus, select:focus { border-color: var(--primary); }
+        input, select { width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 0.95rem; outline: none; box-sizing: border-box; }
+        input:focus { border-color: var(--primary); }
 
-        /* Password Wrapper with Toggle Icon */
         .password-wrapper { position: relative; }
-        #passwordField { padding-right: 45px; }
-        .toggle-icon {
-            position: absolute;
-            right: 15px;
-            top: 50%;
-            transform: translateY(-50%);
-            cursor: pointer;
-            color: #94a3b8;
-        }
-        .toggle-icon:hover { color: var(--primary); }
+        .toggle-icon { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #94a3b8; }
 
-        .btn-access { background: var(--primary); color: white; border: none; padding: 14px; border-radius: 10px; font-weight: 700; width: 100%; cursor: pointer; transition: 0.3s; margin-top: 10px; }
-        .btn-access:hover { background: #4f46e5; transform: translateY(-1px); }
-
-        .footer-links { text-align: center; margin-top: 25px; font-size: 0.75rem; color: #94a3b8; }
-        .footer-links a { color: var(--primary); text-decoration: none; margin: 0 5px; }
+        .btn-access { background: var(--primary); color: white; border: none; padding: 14px; border-radius: 10px; font-weight: 700; width: 100%; cursor: pointer; transition: 0.3s; }
+        .btn-access:hover { background: #357abd; }
     </style>
 </head>
-<body>
+<body onload="checkError()">
 
-    <div class="login-card">
-        <div class="brand-header">
-            <i class="fa-solid fa-shield-halved" style="font-size: 2.5rem; color: var(--primary); margin-bottom: 10px;"></i>
-            <h2>INKWAKE</h2>
-            <p style="color: #64748b; font-size: 0.85rem;">Secure File Transmission Node</p>
+    <div class="login-card" id="loginCard">
+        <div class="header">
+            <i class="fa-solid fa-lock" style="font-size: 2.5rem; color: var(--primary); margin-bottom: 10px;"></i>
+            <h2>Secure Node Login</h2>
         </div>
 
         <form action="/auth" method="post">
             <div class="input-group">
-                <label>NETWORK ROLE</label>
                 <select name="role" id="roleSelector" onchange="checkRole()">
-                    <option value="sender">Sender Node</option>
-                    <option value="receiver">Receiver Node</option>
-                    <option value="admin">System Administrator</option>
+                    <option value="sender">Sender</option>
+                    <option value="receiver">Receiver</option>
+                    <option value="admin">Administrator</option>
                 </select>
             </div>
 
             <div id="receiverData" style="display:none; background: #f1f5f9; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
-                <div class="input-group">
-                    <input type="text" name="name" id="nameInp" placeholder="Node Identity (Full Name)">
-                </div>
-                <div class="input-group" style="margin-bottom: 0;">
-                    <input type="text" name="phone" id="phoneInp" placeholder="Node Contact (Phone)">
-                </div>
+                <input type="text" name="name" id="nameInp" placeholder="Full Name" style="margin-bottom:10px">
+                <input type="text" name="phone" id="phoneInp" placeholder="Phone Number">
             </div>
 
             <div class="input-group">
-                <label>ACCESS KEY</label>
                 <div class="password-wrapper">
-                    <input type="password" name="password" id="passwordField" placeholder="••••••••" required>
+                    <input type="password" name="password" id="passwordField" placeholder="enter password" required>
                     <i class="fa-solid fa-eye toggle-icon" id="eyeIcon" onclick="togglePassword()"></i>
                 </div>
             </div>
 
-            <button type="submit" class="btn-access">AUTHENTICATE NODE</button>
+            <button type="submit" class="btn-access">ACCESS SYSTEM</button>
         </form>
-
-        {% if error %}
-        <p style="color: #ef4444; font-size: 0.8rem; text-align: center; margin-top: 15px; font-weight: bold;">
-            <i class="fa-solid fa-triangle-exclamation"></i> Authentication Failed. Access Denied.
-        </p>
-        {% endif %}
-
-        <div class="footer-links">
-            <p>© 2026 Inkwake Solutions</p>
-            <a href="/terms">Terms of Service</a> | <a href="/privacy">Privacy Policy</a>
-        </div>
     </div>
 
     <script>
+        // Alert if wrong password detected via URL parameter
+        function checkError() {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('error') === 'true') {
+                // 1. Visual Shake
+                document.getElementById('loginCard').classList.add('shake');
+                
+                // 2. Browser Alert
+                alert("❌ Access Denied: Incorrect Password or Role. Please try again.");
+            }
+        }
+
         function checkRole() {
             const role = document.getElementById('roleSelector').value;
             const div = document.getElementById('receiverData');
-            const n = document.getElementById('nameInp');
-            const p = document.getElementById('phoneInp');
-            
-            if (role === 'receiver') {
-                div.style.display = 'block';
-                n.required = true; p.required = true;
-            } else {
-                div.style.display = 'none';
-                n.required = false; p.required = false;
-            }
+            div.style.display = (role === 'receiver') ? 'block' : 'none';
         }
 
         function togglePassword() {
             const passInput = document.getElementById('passwordField');
             const icon = document.getElementById('eyeIcon');
-            
             if (passInput.type === 'password') {
                 passInput.type = 'text';
-                icon.classList.remove('fa-eye');
-                icon.classList.add('fa-eye-slash');
+                icon.classList.replace('fa-eye', 'fa-eye-slash');
             } else {
                 passInput.type = 'password';
-                icon.classList.remove('fa-eye-slash');
-                icon.classList.add('fa-eye');
+                icon.classList.replace('fa-eye-slash', 'fa-eye');
             }
         }
     </script>
