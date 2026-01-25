@@ -1,10 +1,59 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <title>Inkwake | Receiver Node</title>
     <style>
+        /* Professional Red Logout Button */
+        .btn-logout {
+            background: transparent;
+            border: 1px solid #ef4444;
+            color: #ef4444;
+            padding: 8px 18px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 0.85rem;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-logout:hover {
+            background: #ef4444;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+        }
+
+        /* Floating Feedback Button */
+        .feedback-trigger {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            background: #6366f1; /* Inkwake Primary Blue */
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            text-decoration: none;
+            box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.3);
+            transition: all 0.2s;
+            z-index: 1000;
+        }
+        .feedback-trigger:hover {
+            transform: scale(1.1) rotate(10deg);
+            background: #4f46e5;
+        }
+
         .compose-area {
             margin-top: 25px;
             padding: 20px;
@@ -13,111 +62,73 @@
             border-radius: 12px;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
+
         #replyInput {
             width: 100%;
-            height: 120px;
+            height: 100px;
             padding: 15px;
-            border-radius: 8px;
+            border-radius: 10px;
             border: 1px solid #cbd5e1;
             font-family: inherit;
-            font-size: 1rem;
-            resize: vertical;
             outline: none;
-            margin-bottom: 10px;
+            transition: border-color 0.3s;
         }
-        #replyInput:focus { border-color: #4a90e2; box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1); }
+        #replyInput:focus { border-color: #6366f1; }
 
-        .send-btn {
-            width: 100%;
-            padding: 12px;
-            background: #4a90e2;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: 0.3s;
-        }
-        .send-btn:hover { background: #357abd; }
-
-        /* Floating Feedback Icon Styles */
-        .feedback-trigger {
-            position: fixed;
-            bottom: 30px;
-            right: 30px;
-            width: 60px;
-            height: 60px;
-            background: #f59e0b;
-            color: white;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.8rem;
-            text-decoration: none;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
-            transition: transform 0.2s, background 0.2s;
-            z-index: 1000;
-        }
-        .feedback-trigger:hover {
-            transform: scale(1.1);
-            background: #d97706;
-        }
-        .feedback-tooltip {
-            position: fixed;
-            bottom: 45px;
-            right: 100px;
-            background: #1e293b;
-            color: white;
-            padding: 5px 12px;
-            border-radius: 6px;
-            font-size: 0.75rem;
-            opacity: 0;
-            transition: opacity 0.3s;
-            pointer-events: none;
-        }
-        .feedback-trigger:hover + .feedback-tooltip {
-            opacity: 1;
-        }
+        .container { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
     </style>
 </head>
-<body>
-    <div class="container" style="max-width: 850px;">
-        <div class="status-bar">
-            <div id="dot" class="indicator"></div>
-            <span id="stat">SECURE NODE</span>
-            <span style="margin-left:20px; font-weight:bold; color:#4a90e2;">👤 {{ user_name }}</span>
-            <a href="/logout" style="margin-left:auto; color:red; text-decoration:none;">Logout</a>
+<body style="background-color: #f8fafc; padding-top: 30px;">
+
+    <div class="container" style="max-width: 850px; margin: 0 auto;">
+        <div class="status-bar" style="display:flex; justify-content:space-between; align-items:center; background: #1e293b; padding: 12px 20px; border-radius: 12px; margin-bottom: 25px; color: white;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <div id="dot" class="indicator" style="width: 10px; height: 10px; background: #64748b; border-radius: 50%;"></div>
+                <span id="stat" style="font-size: 0.8rem; font-weight: bold; letter-spacing: 1px;">INITIALIZING</span>
+            </div>
+            <span style="font-weight:bold; color:#818cf8;"><i class="fa-solid fa-user-shield"></i> {{ user_name }}</span>
+            <a href="/logout" class="btn-logout">
+                <i class="fa-solid fa-right-from-bracket"></i> Logout
+            </a>
         </div>
         
-        <h2 id="msg">Receiver Node Active</h2>
-        <button id="start" class="btn" onclick="init()">Initialize Feed</button>
+        <div style="text-align: center;">
+            <h2 id="msg" style="color: #1e293b;">Receiver Node Active</h2>
+            <button id="start" class="btn" style="background: #6366f1; width: auto; padding: 12px 40px;" onclick="init()">
+                <i class="fa-solid fa-play"></i> Initialize Feed
+            </button>
+        </div>
 
         <div id="mainView" style="display:none; margin-top:20px;">
-            <div id="displayArea" style="background:#000; border-radius:15px; min-height:400px; display:flex; align-items:center; justify-content:center; overflow:hidden;">
-                <p style="color:white;">Waiting for secure transmission...</p>
+            <div id="displayArea" style="background:#000; border-radius:15px; min-height:400px; display:flex; align-items:center; justify-content:center; overflow:hidden; border: 4px solid #1e293b;">
+                <p style="color:#94a3b8;"><i class="fa-solid fa-satellite-dish fa-spin"></i> Waiting for secure transmission...</p>
             </div>
             
-            <div id="actions" style="display:none; margin-top:10px; gap:10px;">
-                <a id="dl" href="#" download class="btn" style="background:#22c55e; flex:1; text-decoration:none; display:flex; align-items:center; justify-content:center;">Download File</a>
-                <button onclick="document.getElementById('displayArea').requestFullscreen()" class="btn" style="flex:1;">Fullscreen</button>
+            <div id="actions" style="display:none; margin-top:15px; gap:10px;">
+                <a id="dl" href="#" download class="btn" style="background:#22c55e; flex:1; text-decoration:none; display:flex; align-items:center; justify-content:center; gap: 8px;">
+                    <i class="fa-solid fa-download"></i> Download File
+                </a>
+                <button onclick="document.getElementById('displayArea').requestFullscreen()" class="btn" style="flex:1; background: #64748b;">
+                    <i class="fa-solid fa-expand"></i> Fullscreen
+                </button>
             </div>
             
-            <div style="margin-top:20px; text-align:left;">
-                <h4>💬 Secure Chat</h4>
-                <div id="cBox" style="height:150px; overflow-y:auto; background:#f8fafc; padding:10px; border-radius:8px; border:1px solid #ddd; font-size:0.85rem; margin-bottom:15px;"></div>
+            <div style="margin-top:30px; text-align:left;">
+                <h4 style="color: #475569; margin-bottom: 12px;"><i class="fa-solid fa-comments"></i> Secure Node Chat</h4>
+                <div id="cBox" style="height:150px; overflow-y:auto; background:#f8fafc; padding:15px; border-radius:12px; border:1px solid #e2e8f0; font-size:0.9rem; margin-bottom:15px;"></div>
                 
                 <div class="compose-area">
-                    <h4>📤 Compose Secure Reply</h4>
-                    <textarea id="replyInput" placeholder="Type your message to the network..."></textarea>
-                    <button onclick="sendReply()" class="send-btn">Send Message</button>
+                    <h4 style="margin-top: 0; font-size: 0.9rem; color: #1e293b;">📤 Send Secure Reply</h4>
+                    <textarea id="replyInput" placeholder="Type your response to the sender..."></textarea>
+                    <button onclick="sendReply()" class="btn" style="background: #6366f1; width: 100%; margin: 0;">Transmit Reply</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <a href="/feedback_page" class="feedback-trigger" title="Send Feedback to Admin">💬</a>
-    <div class="feedback-tooltip">System Feedback</div>
+    <a href="/feedback_page" class="feedback-trigger" title="Send Feedback to Admin">
+        <i class="fa-solid fa-message"></i>
+    </a>
 
     <script>
         const socket = io();
@@ -138,13 +149,14 @@
                     msg: message
                 });
                 input.value = "";
-                alert("Message sent!");
             }
         }
 
         socket.on('connect', () => {
-            document.getElementById('dot').classList.add('online');
-            document.getElementById('stat').innerText = "CONNECTED";
+            const dot = document.getElementById('dot');
+            dot.style.background = "#22c55e";
+            dot.style.boxShadow = "0 0 10px #22c55e";
+            document.getElementById('stat').innerText = "NODE ONLINE";
             socket.emit('join_network', { name: uName, phone: uPhone });
             setInterval(() => socket.emit('heartbeat', { name: uName, phone: uPhone }), 30000);
         });
@@ -155,15 +167,19 @@
             const ext = d.filename.split('.').pop().toLowerCase();
             const path = "/static/uploads/" + d.filename;
             let h = "";
-            if(['mp4'].includes(ext)) h=`<video width="100%" autoplay controls src="${path}"></video>`;
-            else if(['jpg','png','jpeg'].includes(ext)) h=`<img src="${path}" style="width:100%">`;
-            else h=`<iframe src="${path}" width="100%" height="450px"></iframe>`;
+            if(['mp4', 'webm'].includes(ext)) h=`<video width="100%" autoplay controls src="${path}"></video>`;
+            else if(['jpg','png','jpeg', 'gif'].includes(ext)) h=`<img src="${path}" style="width:100%; object-fit: contain;">`;
+            else h=`<iframe src="${path}" width="100%" height="500px"></iframe>`;
             document.getElementById('displayArea').innerHTML = h;
         });
 
         socket.on('new_message', d => {
             const b = document.getElementById('cBox');
-            b.innerHTML += `<div><b>${d.user}:</b> ${d.msg} <small style="color:gray;">(${d.time})</small></div>`;
+            b.innerHTML += `<div style="margin-bottom: 8px; padding-bottom: 5px; border-bottom: 1px solid #f1f5f9;">
+                                <b style="color: #6366f1;">${d.user}:</b> 
+                                <span style="color: #1e293b;">${d.msg}</span> 
+                                <small style="color:#94a3b8; float:right;">${d.time}</small>
+                            </div>`;
             b.scrollTop = b.scrollHeight;
         });
     </script>
