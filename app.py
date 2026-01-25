@@ -39,6 +39,9 @@ def init_db():
             conn.execute("INSERT INTO users VALUES ('sender', 'sender123'), ('receiver', 'receiver123'), ('admin', 'admin123')")
         conn.commit()
 
+# Initialize DB at top level for Gunicorn compatibility
+init_db()
+
 # --- Background Task: 24h File Expiry ---
 def auto_cleanup():
     while True:
@@ -126,7 +129,6 @@ def admin():
                                     FROM active_receivers ORDER BY login_time DESC''').fetchall()
         failed_logs = conn.execute('SELECT * FROM security_logs ORDER BY timestamp DESC LIMIT 20').fetchall()
         feedbacks = conn.execute('SELECT * FROM feedback ORDER BY timestamp DESC').fetchall()
-        # Fetch blacklisted IPs for the Managed Blacklist section
         blacklisted_ips = conn.execute('SELECT * FROM blacklist ORDER BY timestamp DESC').fetchall()
         
     return render_template('admin.html', files=files, used_mb=used_mb, 
@@ -134,7 +136,6 @@ def admin():
                            receivers=receivers, failed_logs=failed_logs, 
                            feedbacks=feedbacks, blacklisted_ips=blacklisted_ips)
 
-# IPS: Blacklist IP Route
 @app.route('/blacklist_ip/<ip>')
 def blacklist_ip(ip):
     if session.get('role') == 'admin':
@@ -143,7 +144,6 @@ def blacklist_ip(ip):
             conn.commit()
     return redirect(url_for('admin'))
 
-# IPS: Unblock IP Route
 @app.route('/unblock_ip/<ip>')
 def unblock_ip(ip):
     if session.get('role') == 'admin':
@@ -183,23 +183,16 @@ def download_feedback():
     if session.get('role') != 'admin': return redirect('/')
     with get_db() as conn:
         feedbacks = conn.execute('SELECT * FROM feedback ORDER BY timestamp DESC').fetchall()
-    report = "--- INKWAKE SYSTEM FEEDBACK REPORT ---\n\n"
+    report = "--- SYSTEM FEEDBACK REPORT ---\n\n"
     for f in feedbacks:
         report += f"[{f['timestamp']}] {f['sender_name']} ({f['role']}): {f['message']}\n" + "-"*40 + "\n"
-    return Response(report, mimetype="text/plain", headers={"Content-disposition": "attachment; filename=inkwake_feedback.txt"})
+    return Response(report, mimetype="text/plain", headers={"Content-disposition": "attachment; filename=system_feedback.txt"})
 
 @app.route('/clear_feedback')
 def clear_feedback():
     if session.get('role') == 'admin':
         with get_db() as conn:
             conn.execute('DELETE FROM feedback'); conn.commit()
-    return redirect(url_for('admin'))
-
-@app.route('/clear_activity_logs')
-def clear_activity_logs():
-    if session.get('role') == 'admin':
-        with get_db() as conn: 
-            conn.execute('DELETE FROM active_receivers'); conn.commit()
     return redirect(url_for('admin'))
 
 @app.route('/update_passwords', methods=['POST'])
@@ -243,10 +236,8 @@ def delete_file(filename):
 def logout():
     session.clear()
     return redirect(url_for('login_page'))
-    init_db()
-    
+
 if __name__ == '__main__':
-    
     if not os.path.exists(UPLOAD_FOLDER): os.makedirs(UPLOAD_FOLDER)
     port = int(os.environ.get('PORT', 5000))
     socketio.run(app, host='0.0.0.0', port=port)
