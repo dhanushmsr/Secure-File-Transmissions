@@ -1,6 +1,7 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
     <link rel="stylesheet" href="/static/css/style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <style>
@@ -12,80 +13,93 @@
             border-radius: 12px;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
-        #feedbackInput {
-            width: 100%;
-            height: 80px;
-            padding: 12px;
-            border-radius: 8px;
-            border: 1px solid #fcd34d;
-            font-family: inherit;
-            font-size: 0.9rem;
-            resize: vertical;
-            outline: none;
-            margin-bottom: 10px;
-        }
-        #feedbackInput:focus { 
-            border-color: #f59e0b; 
-            box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1); 
-        }
-        .feedback-btn {
-            width: 100%;
-            padding: 10px;
+        
+        /* Floating Feedback Icon Styles */
+        .feedback-trigger {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
             background: #f59e0b;
             color: white;
-            border: none;
-            border-radius: 8px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: 0.3s;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            text-decoration: none;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+            transition: transform 0.2s, background 0.2s;
+            z-index: 1000;
         }
-        .feedback-btn:hover { background: #d97706; }
+        .feedback-trigger:hover {
+            transform: scale(1.1);
+            background: #d97706;
+        }
+
+        /* Alert Notification Animation */
+        .broadcast-alert {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e293b;
+            color: white;
+            padding: 12px 25px;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            z-index: 2000;
+            display: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            border: 1px solid #4a90e2;
+        }
     </style>
 </head>
 <body>
-    <div class="container">
+    <div id="broadcastAlert" class="broadcast-alert">🔔 New System-wide Message</div>
+
+    <div class="container" style="max-width: 850px;">
         <div style="display:flex; justify-content:space-between; align-items:center;">
-            <h2>Sender Node</h2>
-            <a href="/logout" style="color:red; text-decoration:none; font-weight:bold;">Logout</a>
+            <h2 style="color: #1e293b;">🚀 Sender Node</h2>
+            <a href="/logout" style="color: #ef4444; text-decoration: none; font-weight: bold; font-size: 0.9rem;">Disconnect Node</a>
         </div>
 
-        <div style="background:#f1f5f9; padding:15px; border-radius:10px; margin-top:15px;">
-            <label>Target Node:</label>
-            <select id="targetSelect" style="margin-bottom:10px;">
-                <option value="all">Broadcast to All</option>
-                {% for r in receivers %}
-                <option value="room_{{ r.phone }}">{{ r.name }} ({{ r.phone }})</option>
-                {% endfor %}
-            </select>
-            <button onclick="testLink()" class="btn" style="background:#6366f1; margin:0;">⚡ Test Connection</button>
-        </div>
-
-        <form action="/upload" method="post" enctype="multipart/form-data" style="margin-top:20px;">
-            <input type="hidden" name="target_receiver" id="hiddenTarget" value="all">
-            <div style="border: 2px dashed #cbd5e1; padding: 15px; border-radius: 8px; margin-bottom: 10px;">
-                <input type="file" name="file" required style="width: 100%;">
+        <div style="background:#f1f5f9; padding:20px; border-radius:12px; margin-top:20px; border: 1px solid #e2e8f0;">
+            <label style="font-weight: bold; display: block; margin-bottom: 8px; color: #475569;">Target Distribution:</label>
+            <div style="display: flex; gap: 10px;">
+                <select id="targetSelect" style="flex: 2; padding: 10px; border-radius: 8px; border: 1px solid #cbd5e1;">
+                    <option value="all">Broadcast to All Nodes</option>
+                    {% for r in receivers %}
+                    <option value="room_{{ r.phone }}">{{ r.name }} ({{ r.phone }})</option>
+                    {% endfor %}
+                </select>
+                <button onclick="testLink()" class="btn" style="flex: 1; background:#6366f1; margin:0;">⚡ Test Link</button>
             </div>
-            <button type="submit" class="btn" onclick="document.getElementById('hiddenTarget').value = document.getElementById('targetSelect').value">Start Transmission</button>
+        </div>
+
+        <form action="/upload" method="post" enctype="multipart/form-data" style="margin-top:25px;">
+            <input type="hidden" name="target_receiver" id="hiddenTarget" value="all">
+            <div style="border: 2px dashed #4a90e2; padding: 30px; border-radius: 12px; text-align: center; background: #f0f7ff;">
+                <input type="file" name="file" required style="cursor: pointer;">
+                <p style="margin-top: 10px; font-size: 0.8rem; color: #4a90e2;">Max payload: 500MB</p>
+            </div>
+            <button type="submit" class="btn" style="width: 100%; margin-top: 15px;" 
+                    onclick="document.getElementById('hiddenTarget').value = document.getElementById('targetSelect').value">
+                Initiate Secure Transmission
+            </button>
         </form>
 
-        <div id="chatBox" style="height:150px; overflow-y:auto; background:#fff; border:1px solid #ddd; margin-top:20px; padding:10px; font-size:0.85rem; text-align:left; border-radius: 8px;"></div>
+        <div id="chatBox" style="height:180px; overflow-y:auto; background:#fff; border:1px solid #e2e8f0; margin-top:25px; padding:15px; font-size:0.9rem; border-radius: 12px;"></div>
         
-        <div style="display:flex; gap:5px; margin-top:5px;">
-            <input type="text" id="mInp" placeholder="Send a message..." style="flex:1; padding: 10px; border-radius: 5px; border: 1px solid #ccc;">
-            <button onclick="sendMsg()" class="btn" style="width:auto; margin:0;">Send</button>
-        </div>
-
-        <div class="compose-area" style="background: #fffbeb; border-color: #fde68a; margin-top: 25px;">
-            <h4 style="color: #92400e; margin-top: 0;">📩 System Feedback (Admin Only)</h4>
-            <form action="/submit_feedback" method="post">
-                <textarea id="feedbackInput" name="feedback_msg" placeholder="Share your experience or report issues to the Admin..."></textarea>
-                <button type="submit" class="feedback-btn">Submit Feedback</button>
-            </form>
-            {% if request.args.get('feedback_success') %}
-                <p style="color: #b45309; font-size: 0.8rem; margin-top: 8px; font-weight: bold;">✅ Feedback sent to Admin dashboard!</p>
-            {% endif %}
+        <div style="display:flex; gap:10px; margin-top:10px;">
+            <input type="text" id="mInp" placeholder="Type secure message..." style="flex:1; padding: 12px; border-radius: 8px; border: 1px solid #cbd5e1;">
+            <button onclick="sendMsg()" class="btn" style="width:auto; margin:0; padding: 0 25px;">Send</button>
         </div>
     </div>
+
+    <a href="/feedback_page" class="feedback-trigger" title="Send Feedback to Admin">💬</a>
 
     <script>
         const socket = io();
@@ -93,7 +107,14 @@
         function testLink() {
             const t = document.getElementById('targetSelect').value;
             socket.emit('test_connection', { target: t });
-            alert("Test signal sent to " + t);
+            showAlert("Test signal sent to " + t);
+        }
+
+        function showAlert(text) {
+            const alertBox = document.getElementById('broadcastAlert');
+            alertBox.innerText = "🔔 " + text;
+            alertBox.style.display = 'block';
+            setTimeout(() => { alertBox.style.display = 'none'; }, 3000);
         }
 
         function sendMsg() {
@@ -109,14 +130,18 @@
             if (e.key === "Enter") sendMsg();
         });
 
+        // Listen for all messages to trigger the Alert for everyone
         socket.on('new_message', d => {
             const cb = document.getElementById('chatBox');
-            cb.innerHTML += `<div style="margin-bottom: 5px;">
+            cb.innerHTML += `<div style="margin-bottom: 8px;">
                                 <span style="color:#4a90e2; font-weight:bold;">${d.user}:</span> 
-                                <span>${d.msg}</span>
-                                <small style="color:#999; float:right;">${d.time || ''}</small>
+                                <span style="color:#1e293b;">${d.msg}</span>
+                                <small style="color:#94a3b8; float:right; font-size: 0.7rem;">${d.time || ''}</small>
                              </div>`;
             cb.scrollTop = cb.scrollHeight;
+            
+            // Trigger alert for all users
+            showAlert("New message from " + d.user);
         });
 
         socket.on('update_user_list', d => {
@@ -128,10 +153,6 @@
                 o.text = d.name + " (" + d.phone + ")";
                 s.appendChild(o);
             }
-        });
-
-        socket.on('notify_sender', d => {
-            console.log("Transmission update:", d);
         });
     </script>
 </body>
