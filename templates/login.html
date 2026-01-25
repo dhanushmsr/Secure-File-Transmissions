@@ -2,65 +2,99 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="/static/css/style.css">
-    <title>Secure Node Login</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <title>Inkwake | Secure Node Login</title>
     <style>
-        .password-container {
-            position: relative;
-            width: 100%;
+        :root {
+            --primary: #6366f1;
+            --bg-soft: #f8fafc;
+            --text-dark: #1e293b;
         }
-        .password-container input {
-            width: 100%;
-            padding-right: 40px; /* Space for the eye icon */
-        }
-        .eye-icon {
+
+        body { background-color: var(--bg-soft); font-family: 'Inter', sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+        
+        .login-card { background: white; padding: 40px; border-radius: 20px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); width: 100%; max-width: 400px; }
+        
+        .brand-header { text-align: center; margin-bottom: 30px; }
+        .brand-header h2 { margin: 0; color: var(--text-dark); font-weight: 800; letter-spacing: -1px; }
+        
+        .input-group { margin-bottom: 20px; position: relative; }
+        .input-group label { display: block; font-size: 0.8rem; font-weight: 600; color: #64748b; margin-bottom: 5px; }
+        
+        input, select { width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 0.95rem; outline: none; transition: border-color 0.2s; box-sizing: border-box; }
+        input:focus, select:focus { border-color: var(--primary); }
+
+        /* Password Wrapper with Toggle Icon */
+        .password-wrapper { position: relative; }
+        #passwordField { padding-right: 45px; }
+        .toggle-icon {
             position: absolute;
-            right: 12px;
+            right: 15px;
             top: 50%;
             transform: translateY(-50%);
             cursor: pointer;
-            color: #64748b;
-            font-size: 1.2rem;
-            user-select: none;
+            color: #94a3b8;
         }
-        #receiverData input {
-            margin-bottom: 10px;
-        }
+        .toggle-icon:hover { color: var(--primary); }
+
+        .btn-access { background: var(--primary); color: white; border: none; padding: 14px; border-radius: 10px; font-weight: 700; width: 100%; cursor: pointer; transition: 0.3s; margin-top: 10px; }
+        .btn-access:hover { background: #4f46e5; transform: translateY(-1px); }
+
+        .footer-links { text-align: center; margin-top: 25px; font-size: 0.75rem; color: #94a3b8; }
+        .footer-links a { color: var(--primary); text-decoration: none; margin: 0 5px; }
     </style>
 </head>
 <body>
-    <div class="container" style="max-width: 400px;">
-        <h2 style="text-align: center; color: #1e293b;">🔐 Secure Access</h2>
-        <p style="text-align: center; font-size: 0.85rem; color: #64748b; margin-bottom: 20px;">
-            Select your node role to enter the network.
-        </p>
+
+    <div class="login-card">
+        <div class="brand-header">
+            <i class="fa-solid fa-shield-halved" style="font-size: 2.5rem; color: var(--primary); margin-bottom: 10px;"></i>
+            <h2>INKWAKE</h2>
+            <p style="color: #64748b; font-size: 0.85rem;">Secure File Transmission Node</p>
+        </div>
 
         <form action="/auth" method="post">
-            <select name="role" id="roleSelector" onchange="checkRole()" style="margin-bottom: 15px;">
-                <option value="sender">Login as Sender</option>
-                <option value="receiver">Login as Receiver</option>
-                <option value="admin">Login as Admin</option>
-            </select>
-            
-            <div id="receiverData" style="display:none; margin: 10px 0; border: 1px solid #4a90e2; padding: 15px; border-radius: 8px; background: #f0f7ff;">
-                <label style="font-size: 0.75rem; color: #4a90e2; font-weight: bold;">RECEIVER IDENTITY</label>
-                <input type="text" name="name" id="nameInp" placeholder="Full Name">
-                <input type="text" name="phone" id="phoneInp" placeholder="Phone Number">
+            <div class="input-group">
+                <label>NETWORK ROLE</label>
+                <select name="role" id="roleSelector" onchange="checkRole()">
+                    <option value="sender">Sender Node</option>
+                    <option value="receiver">Receiver Node</option>
+                    <option value="admin">System Administrator</option>
+                </select>
             </div>
 
-            <div class="password-container">
-                <input type="password" name="password" id="passwordField" placeholder="Enter Access Key" required>
-                <span class="eye-icon" id="toggleEye" onclick="togglePasswordVisibility()">👁️</span>
+            <div id="receiverData" style="display:none; background: #f1f5f9; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+                <div class="input-group">
+                    <input type="text" name="name" id="nameInp" placeholder="Node Identity (Full Name)">
+                </div>
+                <div class="input-group" style="margin-bottom: 0;">
+                    <input type="text" name="phone" id="phoneInp" placeholder="Node Contact (Phone)">
+                </div>
             </div>
 
-            <button type="submit" class="btn" style="margin-top: 20px; width: 100%;">Access System</button>
+            <div class="input-group">
+                <label>ACCESS KEY</label>
+                <div class="password-wrapper">
+                    <input type="password" name="password" id="passwordField" placeholder="••••••••" required>
+                    <i class="fa-solid fa-eye toggle-icon" id="eyeIcon" onclick="togglePassword()"></i>
+                </div>
+            </div>
+
+            <button type="submit" class="btn-access">AUTHENTICATE NODE</button>
         </form>
-        
+
         {% if error %}
-        <p style="color: #ef4444; font-size: 0.85rem; text-align: center; margin-top: 15px; font-weight: bold;">
-            ⚠️ Invalid Credentials. Access Denied.
+        <p style="color: #ef4444; font-size: 0.8rem; text-align: center; margin-top: 15px; font-weight: bold;">
+            <i class="fa-solid fa-triangle-exclamation"></i> Authentication Failed. Access Denied.
         </p>
         {% endif %}
+
+        <div class="footer-links">
+            <p>© 2026 Inkwake Solutions</p>
+            <a href="/terms">Terms of Service</a> | <a href="/privacy">Privacy Policy</a>
+        </div>
     </div>
 
     <script>
@@ -72,25 +106,25 @@
             
             if (role === 'receiver') {
                 div.style.display = 'block';
-                n.required = true; 
-                p.required = true;
+                n.required = true; p.required = true;
             } else {
                 div.style.display = 'none';
-                n.required = false; 
-                p.required = false;
+                n.required = false; p.required = false;
             }
         }
 
-        function togglePasswordVisibility() {
-            const passwordField = document.getElementById('passwordField');
-            const toggleEye = document.getElementById('toggleEye');
+        function togglePassword() {
+            const passInput = document.getElementById('passwordField');
+            const icon = document.getElementById('eyeIcon');
             
-            if (passwordField.type === 'password') {
-                passwordField.type = 'text';
-                toggleEye.textContent = '🙈'; // Closed eye icon
+            if (passInput.type === 'password') {
+                passInput.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
             } else {
-                passwordField.type = 'password';
-                toggleEye.textContent = '👁️'; // Open eye icon
+                passInput.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
             }
         }
     </script>
