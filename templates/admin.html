@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <link rel="stylesheet" href="/static/css/style.css">
-    <title>Admin Command Center</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <title>Inkwake | Admin Command Center</title>
     <style>
         :root {
             --bg-color: #f8fafc;
@@ -12,6 +13,7 @@
             --text-sub: #64748b;
             --border-color: #e2e8f0;
             --header-bg: #1e293b;
+            --accent: #6366f1;
         }
 
         [data-theme="dark"] {
@@ -23,38 +25,28 @@
             --header-bg: #000000;
         }
 
-        body { background-color: var(--bg-color); color: var(--text-main); transition: all 0.3s ease; }
+        body { background-color: var(--bg-color); color: var(--text-main); transition: all 0.3s ease; font-family: 'Inter', sans-serif; }
         .admin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
         .card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        
         .stats-bar { display: flex; gap: 15px; background: var(--header-bg); color: white; padding: 15px; border-radius: 12px; margin-bottom: 20px; font-size: 0.9rem; }
-        
         .log-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; margin-top: 10px; }
-        .log-table th, .log-table td { text-align: left; padding: 10px; border-bottom: 1px solid var(--border-color); color: var(--text-main); }
+        .log-table th, .log-table td { text-align: left; padding: 12px; border-bottom: 1px solid var(--border-color); color: var(--text-main); }
         
-        .badge-blue { background: #dbeafe; color: #1e40af; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 0.7rem; text-transform: uppercase; }
-        .btn-clear { font-size: 0.7rem; color: #ef4444; text-decoration: none; border: 1px solid #fca5a5; padding: 4px 10px; border-radius: 4px; cursor: pointer; }
-        .btn-download { border-color: #0ea5e9; color: #0ea5e9; background: transparent; margin-right: 5px; }
-        
-        /* Theme Toggle Button */
-        .theme-toggle {
-            background: #6366f1;
-            color: white;
-            border: none;
-            padding: 8px 15px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: bold;
-            margin-right: 10px;
-        }
+        .btn-action { font-size: 0.7rem; padding: 6px 12px; border-radius: 6px; text-decoration: none; border: 1px solid var(--border-color); color: var(--text-main); transition: 0.2s; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
+        .btn-action:hover { background: var(--accent); color: white; border-color: var(--accent); }
+        .btn-danger { color: #ef4444; border-color: #fca5a5; }
+        .btn-danger:hover { background: #ef4444; color: white; }
 
-        .feedback-msg { font-style: italic; color: var(--text-sub); display: block; margin-top: 4px; line-height: 1.4; }
+        .theme-toggle { background: var(--accent); color: white; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; margin-right: 10px; }
+        .badge-status { padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 0.7rem; text-transform: uppercase; }
     </style>
 </head>
 <body>
 
-    <div class="container" style="max-width: 1100px;">
+    <div class="container" style="max-width: 1200px;">
         <div style="display:flex; justify-content:space-between; align-items:center;">
-            <h2 style="margin:0;">🛠️ System Admin Dashboard</h2>
+            <h2 style="margin:0;"><i class="fa-solid fa-gears"></i> Inkwake Command Center</h2>
             <div style="display: flex; align-items: center;">
                 <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn">🌙 Dark Mode</button>
                 <a href="/logout" class="btn" style="width:auto; background:#64748b; margin:0;">Exit Session</a>
@@ -62,123 +54,136 @@
         </div>
 
         <div class="stats-bar" style="margin-top:20px;">
-            <span>🖥️ CPU: <b>{{ health.cpu }}%</b></span> | 
-            <span>🧠 RAM: <b>{{ health.ram }}%</b></span> | 
-            <span>💾 Storage: <b>{{ used_mb }}MB / 500MB</b> ({{ percent }}%)</span>
+            <span><i class="fa-solid fa-microchip"></i> CPU: <b>{{ health.cpu }}%</b></span> | 
+            <span><i class="fa-solid fa-memory"></i> RAM: <b>{{ health.ram }}%</b></span> | 
+            <span><i class="fa-solid fa-database"></i> Storage: <b>{{ used_mb }}MB / 500MB</b> ({{ percent }}%)</span>
         </div>
 
         <div class="admin-grid">
             
             <div class="card">
-                <h4 style="margin-top:0;">🔐 Access Control</h4>
+                <h4 style="margin-top:0;"><i class="fa-solid fa-key"></i> Access Control</h4>
                 <form action="/update_passwords" method="post">
-                    <select name="target_role" style="width:100%; padding:8px; border-radius:6px; border:1px solid var(--border-color); background: var(--card-bg); color: var(--text-main);">
+                    <select name="target_role" style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--border-color); background: var(--card-bg); color: var(--text-main);">
                         <option value="sender">Sender Node</option>
                         <option value="receiver">Receiver Node</option>
                         <option value="admin">Admin Dashboard</option>
                     </select>
-                    <input type="text" name="new_password" placeholder="New Password" required style="margin-top:10px;">
-                    <button type="submit" class="btn" style="background:#6366f1; margin-top:10px;">Apply New Key</button>
+                    <input type="text" name="new_password" placeholder="New Access Key" required style="margin-top:10px; padding: 10px;">
+                    <button type="submit" class="btn" style="background:var(--accent); margin-top:10px; width: 100%;">Rotate Security Key</button>
                 </form>
             </div>
 
             <div class="card">
-                <h4 style="margin-top:0;">📦 File Inventory</h4>
+                <h4 style="margin-top:0;"><i class="fa-solid fa-box-archive"></i> File Inventory</h4>
                 <div style="max-height: 200px; overflow-y: auto;">
                     {% for f in files %}
-                    <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border-color);">
+                    <div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--border-color);">
                         <span style="font-size:0.85rem;">{{ f }}</span>
                         <div>
-                            <a href="/static/uploads/{{ f }}" target="_blank" style="color: #10b981; text-decoration: none; margin-right: 10px;">View</a>
-                            <a href="/delete/{{ f }}" style="color: #ef4444; text-decoration: none;" onclick="return confirm('Delete file?')">Delete</a>
+                            <a href="/static/uploads/{{ f }}" target="_blank" style="color: #10b981; text-decoration: none; margin-right: 15px;"><i class="fa-solid fa-eye"></i></a>
+                            <a href="/delete/{{ f }}" style="color: #ef4444; text-decoration: none;" onclick="return confirm('Delete permanently?')"><i class="fa-solid fa-trash"></i></a>
                         </div>
                     </div>
                     {% endfor %}
                 </div>
             </div>
 
-            <div class="card" style="grid-column: span 2; border: 1px solid #0ea5e9; background: rgba(14, 165, 233, 0.05);">
+            <div class="card" style="grid-column: span 2; border-left: 5px solid #ef4444;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <h4 style="margin:0; color:#ef4444;"><i class="fa-solid fa-shield-halved"></i> Intrusion Detection System (IDS)</h4>
+                    <span class="badge-status" style="background:#fee2e2; color:#ef4444;">Real-time Monitoring</span>
+                </div>
+                <div style="max-height: 300px; overflow-y: auto;">
+                    <table class="log-table">
+                        <thead>
+                            <tr style="border-bottom: 2px solid #ef4444;">
+                                <th>Severity</th>
+                                <th>Target Role</th>
+                                <th>Intruder IP</th>
+                                <th>Origin Hint</th>
+                                <th>Timestamp</th>
+                                <th>Countermeasures</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for log in failed_logs %}
+                            <tr>
+                                <td><span class="badge-status" style="background:#ef4444; color:white;">High Risk</span></td>
+                                <td style="text-transform: uppercase; font-weight: bold;">{{ log.role_tried }}</td>
+                                <td style="font-family: monospace;">{{ log.ip }}</td>
+                                <td><i class="fa-solid fa-location-dot"></i> <small>Global Network</small></td>
+                                <td>{{ log.timestamp }}</td>
+                                <td>
+                                    <a href="/blacklist_ip/{{ log.ip }}" class="btn-action btn-danger" onclick="return confirm('Block this IP from the Inkwake Network?')">
+                                        <i class="fa-solid fa-ban"></i> Block IP
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% if not failed_logs %}<p style="text-align:center; padding:20px; color: var(--text-sub);">✅ No unauthorized access attempts detected.</p>{% endif %}
+                </div>
+            </div>
+
+            <div class="card" style="grid-column: span 2; border-left: 5px solid #0ea5e9;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;">
-                    <h4 style="margin:0; color:#0ea5e9;">💬 User Feedback Sessions</h4>
-                    <div style="display:flex; gap:5px;">
-                        <a href="/download_feedback" class="btn-clear btn-download">📥 Download Report</a>
-                        <a href="/clear_feedback" class="btn-clear" onclick="return confirm('Wipe ALL messages?')">🗑️ Clear All</a>
+                    <h4 style="margin:0; color:#0ea5e9;"><i class="fa-solid fa-message"></i> Client Feedback Reports</h4>
+                    <div style="display:flex; gap:10px;">
+                        <a href="/download_feedback" class="btn-action"><i class="fa-solid fa-file-export"></i> Export Report</a>
+                        <a href="/clear_feedback" class="btn-action btn-danger" onclick="return confirm('Wipe all client messages?')"><i class="fa-solid fa-trash-can"></i> Wipe All</a>
                     </div>
                 </div>
                 <div style="max-height: 300px; overflow-y: auto;">
                     <table class="log-table">
                         <thead>
-                            <tr style="border-bottom: 2px solid var(--border-color);">
-                                <th>User Node</th>
-                                <th>Message Content</th>
-                                <th>Timestamp</th>
+                            <tr style="border-bottom: 2px solid #0ea5e9;">
+                                <th>Client</th>
+                                <th>Report Detail</th>
+                                <th>Received At</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for f in feedbacks %}
                             <tr>
+                                <td><b>{{ f.sender_name }}</b> <span class="badge-status" style="background:#dbeafe; color:#1e40af;">{{ f.role }}</span></td>
+                                <td style="font-style: italic; color: var(--text-sub);">"{{ f.message }}"</td>
+                                <td>{{ f.timestamp }}</td>
                                 <td>
-                                    <b>{{ f.sender_name }}</b><br>
-                                    <span class="badge-blue">{{ f.role }}</span>
-                                </td>
-                                <td><span class="feedback-msg">"{{ f.message }}"</span></td>
-                                <td style="color: var(--text-sub);">{{ f.timestamp }}</td>
-                                <td>
-                                    <a href="/delete_feedback/{{ f.id }}" style="text-decoration: none; font-size: 1.1rem;" onclick="return confirm('Delete this specific entry?')">🗑️</a>
+                                    <a href="/delete_feedback/{{ f.id }}" style="color: #ef4444;" onclick="return confirm('Archive this message?')"><i class="fa-solid fa-circle-xmark"></i></a>
                                 </td>
                             </tr>
                             {% endfor %}
                         </tbody>
                     </table>
-                    {% if not feedbacks %}<p style="text-align:center; padding:20px; color: var(--text-sub);">No feedback received.</p>{% endif %}
                 </div>
-            </div>
-
-            <div class="card" style="border: 1px solid #ef4444; grid-column: span 2;">
-                <h4 style="margin-top:0; color:#ef4444;">🚨 Security Audit: Failed Logins</h4>
-                <table class="log-table">
-                    <thead>
-                        <tr><th>Target</th><th>IP Address</th><th>Time</th></tr>
-                    </thead>
-                    <tbody>
-                        {% for log in failed_logs %}
-                        <tr>
-                            <td style="text-transform: uppercase;"><b>{{ log.role_tried }}</b></td>
-                            <td>{{ log.ip }}</td>
-                            <td>{{ log.timestamp }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
             </div>
 
         </div> 
     </div>
 
     <script>
-        // Dark Mode Toggle Logic
         function toggleTheme() {
             const body = document.body;
             const btn = document.getElementById('themeBtn');
-            
             if (body.getAttribute('data-theme') === 'dark') {
                 body.removeAttribute('data-theme');
-                btn.innerText = "🌙 Dark Mode";
+                btn.innerHTML = "🌙 Dark Mode";
                 localStorage.setItem('theme', 'light');
             } else {
                 body.setAttribute('data-theme', 'dark');
-                btn.innerText = "☀️ Light Mode";
+                btn.innerHTML = "☀️ Light Mode";
                 localStorage.setItem('theme', 'dark');
             }
         }
 
-        // Persistent Theme Check
         window.onload = () => {
             const savedTheme = localStorage.getItem('theme');
             if (savedTheme === 'dark') {
                 document.body.setAttribute('data-theme', 'dark');
-                document.getElementById('themeBtn').innerText = "☀️ Light Mode";
+                document.getElementById('themeBtn').innerHTML = "☀️ Light Mode";
             }
         };
     </script>
