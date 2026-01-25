@@ -65,13 +65,15 @@ def handle_heartbeat(data):
 @socketio.on('send_message')
 def handle_message(data):
     target = data.get('target')
-    display_name = session.get('user_name', session.get('role', 'Sender')).capitalize()
+    # Get proper display name for broadcast
+    display_name = session.get('user_name', session.get('role', 'Node')).capitalize()
     msg_payload = {'user': display_name, 'msg': data.get('msg'), 'time': time.strftime('%H:%M')}
+    
     if target == "all": 
         socketio.emit('new_message', msg_payload)
     else:
         socketio.emit('new_message', msg_payload, room=target)
-        emit('new_message', msg_payload)
+        emit('new_message', msg_payload) # Feedback to sender
 
 # --- Routes ---
 @app.route('/')
@@ -101,6 +103,7 @@ def auth():
 def admin():
     if session.get('role') != 'admin': return redirect('/')
     if not os.path.exists(UPLOAD_FOLDER): os.makedirs(UPLOAD_FOLDER)
+    
     files = os.listdir(UPLOAD_FOLDER)
     total_size = sum(os.path.getsize(os.path.join(UPLOAD_FOLDER, f)) for f in files if os.path.isfile(os.path.join(UPLOAD_FOLDER, f)))
     used_mb = round(total_size / (1024 * 1024), 2)
@@ -116,16 +119,18 @@ def admin():
                            percent=min((used_mb/500)*100, 100), health=health, 
                            receivers=receivers, failed_logs=failed_logs, feedbacks=feedbacks)
 
-# New: Dedicated Feedback Page Route
+# Personalized Innovative Feedback Route
 @app.route('/feedback_page')
 def feedback_page():
     if 'role' not in session: return redirect('/')
-    return render_template('feedback.html', user_name=session.get('user_name', session.get('role')))
+    # Determine the name to display in the header
+    display_name = session.get('user_name', session.get('role').capitalize())
+    return render_template('feedback.html', user_name=display_name)
 
 @app.route('/submit_feedback', methods=['POST'])
 def submit_feedback():
     if 'role' not in session: return redirect('/')
-    name = session.get('user_name', session.get('role'))
+    name = session.get('user_name', session.get('role').capitalize())
     role = session.get('role')
     msg = request.form.get('feedback_msg')
     if msg:
@@ -147,10 +152,10 @@ def download_feedback():
     if session.get('role') != 'admin': return redirect('/')
     with get_db() as conn:
         feedbacks = conn.execute('SELECT * FROM feedback ORDER BY timestamp DESC').fetchall()
-    report = "--- SYSTEM FEEDBACK REPORT ---\n\n"
+    report = "--- INKWAKE SYSTEM FEEDBACK REPORT ---\n\n"
     for f in feedbacks:
-        report += f"[{f['timestamp']}] {f['sender_name']} ({f['role']}): {f['message']}\n" + "-"*30 + "\n"
-    return Response(report, mimetype="text/plain", headers={"Content-disposition": "attachment; filename=feedback_report.txt"})
+        report += f"[{f['timestamp']}] {f['sender_name']} ({f['role']}): {f['message']}\n" + "-"*40 + "\n"
+    return Response(report, mimetype="text/plain", headers={"Content-disposition": "attachment; filename=inkwake_feedback.txt"})
 
 @app.route('/clear_feedback')
 def clear_feedback():
