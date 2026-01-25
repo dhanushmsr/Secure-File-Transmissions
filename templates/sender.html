@@ -192,4 +192,26 @@
         });
 
         socket.on('new_message', d => {
-            const cb =
+            const cb = document.getElementById('chatBox');
+            cb.innerHTML += `<div style="margin-bottom: 10px; border-bottom: 1px solid #f1f5f9; padding-bottom: 5px;">
+                                <span style="color:var(--primary); font-weight:bold;">${d.user}:</span> 
+                                <span style="color:#1e293b;">${d.msg}</span>
+                                <small style="color:#94a3b8; float:right; font-size: 0.7rem;">${d.time}</small>
+                             </div>`;
+            cb.scrollTop = cb.scrollHeight;
+            if(d.user !== "You") showAlert("Incoming Signal: " + d.user);
+        });
+
+        socket.on('update_user_list', d => {
+            const s = document.getElementById('targetSelect');
+            const existing = Array.from(s.options).some(opt => opt.value === "room_" + d.phone);
+            if (!existing) {
+                const o = document.createElement('option');
+                o.value = "room_" + d.phone; 
+                o.text = d.name + " (" + d.phone + ")";
+                s.appendChild(o);
+            }
+        });
+    </script>
+</body>
+</html>
