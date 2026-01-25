@@ -1,5 +1,5 @@
 import os, sqlite3, psutil, time, threading
-from flask import Flask, render_template, request, redirect, url_for, session, Response, abort
+from flask import Flask, render_template, request, redirect, url_for, session, Response, abort, send_from_directory
 from flask_socketio import SocketIO, emit, join_room
 
 app = Flask(__name__)
@@ -9,6 +9,8 @@ app.secret_key = "secure_transmission_ultra_2026"
 app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024 
 socketio = SocketIO(app, cors_allowed_origins="*")
 UPLOAD_FOLDER = 'static/uploads'
+# Define root image folder path
+IMG_FOLDER = 'img'
 
 # --- Database Core ---
 def get_db():
@@ -39,7 +41,7 @@ def init_db():
             conn.execute("INSERT INTO users VALUES ('sender', 'sender123'), ('receiver', 'receiver123'), ('admin', 'admin123')")
         conn.commit()
 
-# Initialize DB at top level for Gunicorn compatibility
+# CRITICAL: Initialize DB at top level so Gunicorn sees it on AWS
 init_db()
 
 # --- Background Task: 24h File Expiry ---
@@ -81,6 +83,12 @@ def handle_message(data):
         emit('new_message', msg_payload)
 
 # --- Routes ---
+
+# 1. SPECIAL ROUTE: Serves icons/images from the root 'img' folder
+@app.route('/img/<path:filename>')
+def serve_custom_images(filename):
+    return send_from_directory(IMG_FOLDER, filename)
+
 @app.route('/')
 def login_page():
     if 'role' in session: return redirect(url_for(session['role']))
@@ -92,13 +100,13 @@ def auth():
     name, phone = request.form.get('name', ''), request.form.get('phone', '')
     user_ip = request.remote_addr
 
-    # 1. IPS Check: Block blacklisted IPs
+    # IPS Check: Block blacklisted IPs
     with get_db() as conn:
         blocked = conn.execute('SELECT * FROM blacklist WHERE ip=?', (user_ip,)).fetchone()
         if blocked:
             abort(403, description="Access Denied: Your IP has been flagged for suspicious activity.")
 
-    # 2. Authentication Logic
+    # Authentication Logic
     with get_db() as conn:
         user = conn.execute('SELECT * FROM users WHERE role=? AND password=?', (role, password)).fetchone()
         if user:
@@ -112,6 +120,7 @@ def auth():
             # Log Failed Attempt for Security Audit
             conn.execute('INSERT INTO security_logs (role_tried, ip) VALUES (?, ?)', (role, user_ip))
             conn.commit()
+            # Triggers Javascript Alert on the Login Page
             return redirect(url_for('login_page', error='true'))
 
 @app.route('/admin')
