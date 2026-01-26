@@ -11,7 +11,8 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 UPLOAD_FOLDER = 'static/uploads'
 IMG_FOLDER = 'img'
 
-if not os.path.exists(UPLOAD_FOLDER): os.makedirs(UPLOAD_FOLDER)
+if not os.path.exists(UPLOAD_FOLDER): 
+    os.makedirs(UPLOAD_FOLDER)
 
 # --- Database Core ---
 def get_db():
@@ -60,10 +61,9 @@ threading.Thread(target=auto_cleanup, daemon=True).start()
 # --- WebSocket Events ---
 @socketio.on('join_network')
 def on_join(data):
-    # Every receiver joins a unique room based on their phone number
+    # Receiver joins a unique room based on their phone (e.g., room_9876543210)
     room = f"room_{data.get('phone')}"
     join_room(room)
-    print(f"User {data.get('name')} joined room: {room}")
 
 @socketio.on('heartbeat')
 def handle_heartbeat(data):
@@ -74,25 +74,21 @@ def handle_heartbeat(data):
 
 @socketio.on('send_message')
 def handle_message(data):
-    """
-    Handles targeted communication.
-    target: 'all' (Broadcast) or 'room_9876543210' (Individual)
-    """
-    target = data.get('target')
+    """Handles multi-target chat messages"""
+    targets = data.get('targets') # Expecting a list from the frontend
     display_name = session.get('user_name', session.get('role', 'Node')).capitalize()
     msg_payload = {
         'user': display_name, 
         'msg': data.get('msg'), 
-        'time': time.strftime('%H:%M'),
-        'is_private': target != 'all'
+        'time': time.strftime('%H:%M')
     }
     
-    if target == "all": 
+    if "all" in targets:
         socketio.emit('new_message', msg_payload)
     else:
-        # Sends only to the specific receiver's room
-        socketio.emit('new_message', msg_payload, room=target)
-        # Also send back to the sender so they see their own message in the chat
+        for t in targets:
+            socketio.emit('new_message', msg_payload, room=t)
+        # Send confirmation back to sender
         emit('new_message', msg_payload)
 
 # --- Routes ---
@@ -115,7 +111,7 @@ def auth():
     with get_db() as conn:
         blocked = conn.execute('SELECT * FROM blacklist WHERE ip=?', (user_ip,)).fetchone()
         if blocked:
-            abort(403, description="Access Denied: Your IP has been flagged.")
+            abort(403, description="IP Blocked")
 
         user = conn.execute('SELECT * FROM users WHERE role=? AND password=?', (role, password)).fetchone()
         if user:
@@ -152,7 +148,6 @@ def admin():
 
 @app.route('/file_history')
 def file_history():
-    """Allows receivers to see past files still on the server."""
     if 'role' not in session: return redirect('/')
     files = os.listdir(UPLOAD_FOLDER)
     return render_template('history.html', files=files)
@@ -192,24 +187,24 @@ def receiver():
 def sender():
     if session.get('role') != 'sender': return redirect('/')
     with get_db() as conn:
-        # Get list of unique online receivers for targeting
+        # Fetch active receivers seen in the last 5 minutes
         receivers = conn.execute('SELECT DISTINCT name, phone FROM active_receivers WHERE last_seen > datetime("now", "-5 minutes")').fetchall()
     return render_template('sender.html', receivers=receivers)
 
 @app.route('/upload', methods=['POST'])
 def upload():
     file = request.files.get('file')
-    target = request.form.get('target_receiver', 'all') # 'all' or 'room_PHONE'
+    targets = request.form.getlist('target_receivers') # Gets multi-select list
     
     if file:
         filename = "".join([c for c in file.filename if c.isalnum() or c in ('.', '_')]).strip()
         file.save(os.path.join(UPLOAD_FOLDER, filename))
         
-        # Notify the specific room or everyone
-        if target == 'all':
+        if "all" in targets:
             socketio.emit('notify_receiver', {'filename': filename})
         else:
-            socketio.emit('notify_receiver', {'filename': filename}, room=target)
+            for t in targets:
+                socketio.emit('notify_receiver', {'filename': filename}, room=t)
             
         return redirect(url_for('sender', success='true'))
     return redirect(url_for('sender'))
