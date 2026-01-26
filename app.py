@@ -9,8 +9,9 @@ app.secret_key = "secure_transmission_ultra_2026"
 app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024 
 socketio = SocketIO(app, cors_allowed_origins="*")
 UPLOAD_FOLDER = 'static/uploads'
-# Define root image folder path
 IMG_FOLDER = 'img'
+
+if not os.path.exists(UPLOAD_FOLDER): os.makedirs(UPLOAD_FOLDER)
 
 # --- Database Core ---
 def get_db():
@@ -31,7 +32,6 @@ def init_db():
         conn.execute('''CREATE TABLE IF NOT EXISTS feedback 
                         (id INTEGER PRIMARY KEY AUTOINCREMENT, sender_name TEXT, 
                          role TEXT, message TEXT, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
-        # IPS Table: Blacklisted IPs
         conn.execute('''CREATE TABLE IF NOT EXISTS blacklist 
                         (ip TEXT PRIMARY KEY, reason TEXT, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
         
@@ -41,7 +41,6 @@ def init_db():
             conn.execute("INSERT INTO users VALUES ('sender', 'sender123'), ('receiver', 'receiver123'), ('admin', 'admin123')")
         conn.commit()
 
-# CRITICAL: Initialize DB at top level so Gunicorn sees it on AWS
 init_db()
 
 # --- Background Task: 24h File Expiry ---
@@ -61,8 +60,10 @@ threading.Thread(target=auto_cleanup, daemon=True).start()
 # --- WebSocket Events ---
 @socketio.on('join_network')
 def on_join(data):
+    # Every receiver joins a unique room based on their phone number
     room = f"room_{data.get('phone')}"
     join_room(room)
+    print(f"User {data.get('name')} joined room: {room}")
 
 @socketio.on('heartbeat')
 def handle_heartbeat(data):
@@ -73,18 +74,29 @@ def handle_heartbeat(data):
 
 @socketio.on('send_message')
 def handle_message(data):
+    """
+    Handles targeted communication.
+    target: 'all' (Broadcast) or 'room_9876543210' (Individual)
+    """
     target = data.get('target')
     display_name = session.get('user_name', session.get('role', 'Node')).capitalize()
-    msg_payload = {'user': display_name, 'msg': data.get('msg'), 'time': time.strftime('%H:%M')}
+    msg_payload = {
+        'user': display_name, 
+        'msg': data.get('msg'), 
+        'time': time.strftime('%H:%M'),
+        'is_private': target != 'all'
+    }
+    
     if target == "all": 
         socketio.emit('new_message', msg_payload)
     else:
+        # Sends only to the specific receiver's room
         socketio.emit('new_message', msg_payload, room=target)
+        # Also send back to the sender so they see their own message in the chat
         emit('new_message', msg_payload)
 
 # --- Routes ---
 
-# 1. SPECIAL ROUTE: Serves icons/images from the root 'img' folder
 @app.route('/img/<path:filename>')
 def serve_custom_images(filename):
     return send_from_directory(IMG_FOLDER, filename)
@@ -100,14 +112,11 @@ def auth():
     name, phone = request.form.get('name', ''), request.form.get('phone', '')
     user_ip = request.remote_addr
 
-    # IPS Check: Block blacklisted IPs
     with get_db() as conn:
         blocked = conn.execute('SELECT * FROM blacklist WHERE ip=?', (user_ip,)).fetchone()
         if blocked:
-            abort(403, description="Access Denied: Your IP has been flagged for suspicious activity.")
+            abort(403, description="Access Denied: Your IP has been flagged.")
 
-    # Authentication Logic
-    with get_db() as conn:
         user = conn.execute('SELECT * FROM users WHERE role=? AND password=?', (role, password)).fetchone()
         if user:
             session['role'] = role
@@ -117,17 +126,13 @@ def auth():
             conn.commit()
             return redirect(url_for(role))
         else:
-            # Log Failed Attempt for Security Audit
             conn.execute('INSERT INTO security_logs (role_tried, ip) VALUES (?, ?)', (role, user_ip))
             conn.commit()
-            # Triggers Javascript Alert on the Login Page
             return redirect(url_for('login_page', error='true'))
 
 @app.route('/admin')
 def admin():
     if session.get('role') != 'admin': return redirect('/')
-    if not os.path.exists(UPLOAD_FOLDER): os.makedirs(UPLOAD_FOLDER)
-    
     files = os.listdir(UPLOAD_FOLDER)
     total_size = sum(os.path.getsize(os.path.join(UPLOAD_FOLDER, f)) for f in files if os.path.isfile(os.path.join(UPLOAD_FOLDER, f)))
     used_mb = round(total_size / (1024 * 1024), 2)
@@ -145,21 +150,12 @@ def admin():
                            receivers=receivers, failed_logs=failed_logs, 
                            feedbacks=feedbacks, blacklisted_ips=blacklisted_ips)
 
-@app.route('/blacklist_ip/<ip>')
-def blacklist_ip(ip):
-    if session.get('role') == 'admin':
-        with get_db() as conn:
-            conn.execute('INSERT OR IGNORE INTO blacklist (ip, reason) VALUES (?, ?)', (ip, 'Manual Administrative Block'))
-            conn.commit()
-    return redirect(url_for('admin'))
-
-@app.route('/unblock_ip/<ip>')
-def unblock_ip(ip):
-    if session.get('role') == 'admin':
-        with get_db() as conn:
-            conn.execute('DELETE FROM blacklist WHERE ip = ?', (ip,))
-            conn.commit()
-    return redirect(url_for('admin'))
+@app.route('/file_history')
+def file_history():
+    """Allows receivers to see past files still on the server."""
+    if 'role' not in session: return redirect('/')
+    files = os.listdir(UPLOAD_FOLDER)
+    return render_template('history.html', files=files)
 
 @app.route('/feedback_page')
 def feedback_page():
@@ -187,31 +183,6 @@ def delete_feedback(id):
             conn.commit()
     return redirect(url_for('admin'))
 
-@app.route('/download_feedback')
-def download_feedback():
-    if session.get('role') != 'admin': return redirect('/')
-    with get_db() as conn:
-        feedbacks = conn.execute('SELECT * FROM feedback ORDER BY timestamp DESC').fetchall()
-    report = "--- SYSTEM FEEDBACK REPORT ---\n\n"
-    for f in feedbacks:
-        report += f"[{f['timestamp']}] {f['sender_name']} ({f['role']}): {f['message']}\n" + "-"*40 + "\n"
-    return Response(report, mimetype="text/plain", headers={"Content-disposition": "attachment; filename=system_feedback.txt"})
-
-@app.route('/clear_feedback')
-def clear_feedback():
-    if session.get('role') == 'admin':
-        with get_db() as conn:
-            conn.execute('DELETE FROM feedback'); conn.commit()
-    return redirect(url_for('admin'))
-
-@app.route('/update_passwords', methods=['POST'])
-def update_passwords():
-    if session.get('role') != 'admin': return redirect('/')
-    with get_db() as conn:
-        conn.execute('UPDATE users SET password = ? WHERE role = ?', (request.form.get('new_password'), request.form.get('target_role')))
-        conn.commit()
-    return redirect(url_for('admin', pass_success='true'))
-
 @app.route('/receiver')
 def receiver():
     if session.get('role') != 'receiver': return redirect('/')
@@ -221,25 +192,27 @@ def receiver():
 def sender():
     if session.get('role') != 'sender': return redirect('/')
     with get_db() as conn:
-        receivers = conn.execute('SELECT DISTINCT name, phone FROM active_receivers').fetchall()
+        # Get list of unique online receivers for targeting
+        receivers = conn.execute('SELECT DISTINCT name, phone FROM active_receivers WHERE last_seen > datetime("now", "-5 minutes")').fetchall()
     return render_template('sender.html', receivers=receivers)
 
 @app.route('/upload', methods=['POST'])
 def upload():
     file = request.files.get('file')
+    target = request.form.get('target_receiver', 'all') # 'all' or 'room_PHONE'
+    
     if file:
         filename = "".join([c for c in file.filename if c.isalnum() or c in ('.', '_')]).strip()
         file.save(os.path.join(UPLOAD_FOLDER, filename))
-        socketio.emit('notify_receiver', {'filename': filename})
+        
+        # Notify the specific room or everyone
+        if target == 'all':
+            socketio.emit('notify_receiver', {'filename': filename})
+        else:
+            socketio.emit('notify_receiver', {'filename': filename}, room=target)
+            
         return redirect(url_for('sender', success='true'))
     return redirect(url_for('sender'))
-
-@app.route('/delete/<filename>')
-def delete_file(filename):
-    if session.get('role') == 'admin':
-        path = os.path.join(UPLOAD_FOLDER, filename)
-        if os.path.exists(path): os.remove(path)
-    return redirect(url_for('admin'))
 
 @app.route('/logout')
 def logout():
@@ -247,6 +220,5 @@ def logout():
     return redirect(url_for('login_page'))
 
 if __name__ == '__main__':
-    if not os.path.exists(UPLOAD_FOLDER): os.makedirs(UPLOAD_FOLDER)
     port = int(os.environ.get('PORT', 5000))
     socketio.run(app, host='0.0.0.0', port=port)
