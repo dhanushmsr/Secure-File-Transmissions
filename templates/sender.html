@@ -37,7 +37,7 @@
             box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
         }
 
-        /* Fixed Mobile Feedback Icon - Adjusted Position */
+        /* Floating Feedback Icon */
         .feedback-trigger {
             position: fixed;
             bottom: 25px;
@@ -54,11 +54,34 @@
             text-decoration: none;
             box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.4);
             transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            z-index: 9999; /* Ensure it stays above everything */
+            z-index: 9999;
         }
         .feedback-trigger:hover {
             transform: scale(1.1) rotate(10deg);
             background: #4f46e5;
+        }
+
+        /* Multi-select styling */
+        .multi-select-box {
+            width: 100%;
+            min-height: 120px;
+            padding: 10px;
+            border-radius: 12px;
+            border: 1px solid #cbd5e1;
+            background: white;
+            font-family: inherit;
+            color: #1e293b;
+            outline: none;
+            cursor: pointer;
+        }
+        .multi-select-box option {
+            padding: 8px;
+            border-radius: 6px;
+            margin-bottom: 2px;
+        }
+        .multi-select-box option:checked {
+            background-color: var(--primary) !important;
+            color: white;
         }
 
         /* Broadcast Alert UI */
@@ -85,28 +108,12 @@
             to { top: 20px; opacity: 1; }
         }
 
-        /* Mobile Optimization */
-        @media (max-width: 600px) {
-            .container { 
-                padding: 15px; 
-                margin-bottom: 100px; /* Space for the floating button */
-            }
-            .feedback-trigger {
-                width: 50px;
-                height: 50px;
-                bottom: 15px;
-                right: 15px;
-            }
-            h2 { font-size: 1.3rem; }
-            .btn-logout { padding: 6px 12px; font-size: 0.75rem; }
-        }
-
         .container { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
     </style>
 </head>
 <body style="background-color: #f8fafc; padding-top: 50px; padding-bottom: 50px;">
 
-    <div id="broadcastAlert" class="broadcast-alert"><i class="fa-solid fa-bell"></i> New Message Received</div>
+    <div id="broadcastAlert" class="broadcast-alert"></div>
 
     <div class="container" style="max-width: 850px; margin: 0 auto;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 25px;">
@@ -115,44 +122,42 @@
                 <h2 style="margin: 0; color: #1e293b;">🚀 Sender Node</h2>
             </div>
             <a href="/logout" class="btn-logout">
-                <i class="fa-solid fa-right-from-bracket"></i> <span class="hide-mobile">Logout</span>
+                <i class="fa-solid fa-right-from-bracket"></i> Logout
             </a>
         </div>
 
-        <div style="background:#f1f5f9; padding:20px; border-radius:15px; border: 1px solid #e2e8f0;">
-            <label style="font-weight: bold; display: block; margin-bottom: 10px; color: #475569;">Target Distribution</label>
-            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                <select id="targetSelect" style="flex: 2; min-width: 200px; padding: 12px; border-radius: 10px; border: 1px solid #cbd5e1; outline: none;">
-                    <option value="all">Broadcast to All Nodes</option>
+        <div style="background:#f1f5f9; padding:25px; border-radius:15px; border: 1px solid #e2e8f0;">
+            <label style="font-weight: bold; display: block; margin-bottom: 10px; color: #475569;">
+                <i class="fa-solid fa-users"></i> Recipient Selection 
+                <small style="font-weight: normal; color: #64748b; margin-left: 10px;">(Hold Ctrl/Cmd to select multiple)</small>
+            </label>
+            
+            <form action="/upload" method="post" enctype="multipart/form-data">
+                <select name="target_receivers" id="targetSelect" class="multi-select-box" multiple required>
+                    <option value="all" selected>📢 Broadcast to All Active Nodes</option>
                     {% for r in receivers %}
-                    <option value="room_{{ r.phone }}">{{ r.name }} ({{ r.phone }})</option>
+                    <option value="room_{{ r.phone }}">👤 {{ r.name }} ({{ r.phone }})</option>
                     {% endfor %}
                 </select>
-                <button onclick="testLink()" class="btn" style="flex: 1; background:var(--primary); margin:0; white-space: nowrap;">
-                    <i class="fa-solid fa-bolt"></i> Test Connection
+
+                <div style="border: 2px dashed var(--primary); padding: 30px; border-radius: 15px; text-align: center; background: #f5f7ff; margin-top: 20px;">
+                    <i class="fa-solid fa-cloud-arrow-up" style="font-size: 2rem; color: var(--primary); margin-bottom: 10px;"></i>
+                    <input type="file" name="file" required style="display: block; margin: 0 auto; width: 100%;">
+                    <p style="margin-top: 10px; font-size: 0.75rem; color: #64748b;">Supported Payload: Up to 500MB</p>
+                </div>
+
+                <button type="submit" class="btn" style="width: 100%; margin-top: 20px; padding: 15px; background: var(--dark);">
+                    <i class="fa-solid fa-share-nodes"></i> Initiate Secure Multi-Transmission
                 </button>
-            </div>
+            </form>
         </div>
 
-        <form action="/upload" method="post" enctype="multipart/form-data" style="margin-top:25px;">
-            <input type="hidden" name="target_receiver" id="hiddenTarget" value="all">
-            <div style="border: 2px dashed var(--primary); padding: 40px; border-radius: 15px; text-align: center; background: #f5f7ff; transition: 0.3s;" id="dropZone">
-                <i class="fa-solid fa-cloud-arrow-up" style="font-size: 2.5rem; color: var(--primary); margin-bottom: 15px;"></i>
-                <input type="file" name="file" required style="display: block; margin: 0 auto; width: 100%;">
-                <p style="margin-top: 15px; font-size: 0.8rem; color: #64748b;">Max Payload: 500MB</p>
-            </div>
-            <button type="submit" class="btn" style="width: 100%; margin-top: 20px; padding: 15px; background: var(--dark);" 
-                    onclick="document.getElementById('hiddenTarget').value = document.getElementById('targetSelect').value">
-                Initiate Secure Transmission
-            </button>
-        </form>
-
         <div style="margin-top: 35px;">
-            <h4 style="color: #475569; margin-bottom: 10px;"><i class="fa-solid fa-comments"></i> Network Communication</h4>
+            <h4 style="color: #475569; margin-bottom: 10px;"><i class="fa-solid fa-comments"></i> Network Chat</h4>
             <div id="chatBox" style="height:200px; overflow-y:auto; background:#f8fafc; border:1px solid #e2e8f0; padding:15px; font-size:0.9rem; border-radius: 12px; margin-bottom: 15px;"></div>
             
             <div style="display:flex; gap:10px;">
-                <input type="text" id="mInp" placeholder="Enter secure message..." style="flex:1; padding: 12px; border-radius: 10px; border: 1px solid #cbd5e1; outline: none;">
+                <input type="text" id="mInp" placeholder="Type message to selected recipients..." style="flex:1; padding: 12px; border-radius: 10px; border: 1px solid #cbd5e1; outline: none;">
                 <button onclick="sendMsg()" class="btn" style="width:auto; margin:0; padding: 0 25px; background: var(--primary);">Send</button>
             </div>
         </div>
@@ -165,12 +170,6 @@
     <script>
         const socket = io();
 
-        function testLink() {
-            const t = document.getElementById('targetSelect').value;
-            socket.emit('test_connection', { target: t });
-            showAlert("Signal sent to " + t);
-        }
-
         function showAlert(text) {
             const alertBox = document.getElementById('broadcastAlert');
             alertBox.innerHTML = `<i class="fa-solid fa-bell"></i> ${text}`;
@@ -178,12 +177,24 @@
             setTimeout(() => { alertBox.style.display = 'none'; }, 4000);
         }
 
+        function getSelectedTargets() {
+            const select = document.getElementById('targetSelect');
+            return Array.from(select.selectedOptions).map(option => option.value);
+        }
+
         function sendMsg() {
-            const m = document.getElementById('mInp').value;
-            const t = document.getElementById('targetSelect').value;
-            if(m.trim() !== "") { 
-                socket.emit('send_message', { msg: m, target: t }); 
-                document.getElementById('mInp').value = ""; 
+            const msgInput = document.getElementById('mInp');
+            const message = msgInput.value.trim();
+            const targets = getSelectedTargets();
+            
+            if(message !== "" && targets.length > 0) { 
+                socket.emit('send_message', { 
+                    msg: message, 
+                    targets: targets 
+                }); 
+                msgInput.value = ""; 
+            } else if (targets.length === 0) {
+                alert("Please select at least one recipient.");
             }
         }
 
@@ -200,17 +211,6 @@
                              </div>`;
             cb.scrollTop = cb.scrollHeight;
             if(d.user !== "You") showAlert("Incoming Signal: " + d.user);
-        });
-
-        socket.on('update_user_list', d => {
-            const s = document.getElementById('targetSelect');
-            const existing = Array.from(s.options).some(opt => opt.value === "room_" + d.phone);
-            if (!existing) {
-                const o = document.createElement('option');
-                o.value = "room_" + d.phone; 
-                o.text = d.name + " (" + d.phone + ")";
-                s.appendChild(o);
-            }
         });
     </script>
 </body>
