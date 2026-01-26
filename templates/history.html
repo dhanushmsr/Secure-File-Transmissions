@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <title>Shared File History</title>
+</head>
+<body style="background: #f8fafc;">
+    <div class="container" style="max-width: 800px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h2>📂 Past Shared Files</h2>
+            <a href="/receiver" class="btn" style="width:auto; background:#64748b;">Back to Live Feed</a>
+        </div>
+        <p style="color:#64748b; font-size:0.9rem;">Note: Files are automatically deleted 24 hours after they are shared.</p>
+
+        <div class="card" style="margin-top:20px; padding:0;">
+            <table style="width:100%; border-collapse: collapse;">
+                <thead style="background:#f1f5f9;">
+                    <tr>
+                        <th style="text-align:left; padding:15px;">File Name</th>
+                        <th style="text-align:right; padding:15px;">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for f in files %}
+                    <tr style="border-bottom:1px solid #e2e8f0;">
+                        <td style="padding:15px;">{{ f }}</td>
+                        <td style="padding:15px; text-align:right;">
+                            <a href="/static/uploads/{{ f }}" download class="btn-action" style="color:#4a90e2; text-decoration:none; font-weight:bold;">📥 Download</a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="2" style="padding:40px; text-align:center; color:#94a3b8;">No files found in recent history.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>
