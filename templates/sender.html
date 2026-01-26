@@ -6,11 +6,12 @@
     <link rel="stylesheet" href="/static/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
-    <title>Sender Node</title>
+    <title>Sender Node | Inkwake</title>
     <link rel="icon" type="image/png" href="/img/sender.png?v=1.1">
     <style>
         :root {
             --primary: #6366f1;
+            --success: #22c55e;
             --dark: #0f172a;
             --slate: #f8fafc;
         }
@@ -37,6 +38,85 @@
             box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
         }
 
+        /* Receiver Card Grid */
+        .receiver-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+            padding: 5px;
+        }
+
+        .receiver-card {
+            position: relative;
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            user-select: none;
+        }
+
+        .receiver-card input[type="checkbox"] {
+            display: none;
+        }
+
+        /* The Green Tick Indicator */
+        .tick-indicator {
+            width: 24px;
+            height: 24px;
+            border: 2px solid #cbd5e1;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            background: white;
+            flex-shrink: 0;
+        }
+
+        .tick-indicator i {
+            font-size: 0.75rem;
+            color: white;
+            display: none;
+        }
+
+        /* Active/Checked State */
+        .receiver-card.active {
+            border-color: var(--success);
+            background: #f0fdf4;
+            transform: scale(1.02);
+        }
+
+        .receiver-card.active .tick-indicator {
+            background: var(--success);
+            border-color: var(--success);
+        }
+
+        .receiver-card.active .tick-indicator i {
+            display: block;
+        }
+
+        .receiver-info b {
+            display: block;
+            font-size: 0.9rem;
+            color: #1e293b;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .receiver-info small {
+            color: #64748b;
+            font-size: 0.75rem;
+        }
+
         /* Floating Feedback Icon */
         .feedback-trigger {
             position: fixed;
@@ -56,35 +136,7 @@
             transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             z-index: 9999;
         }
-        .feedback-trigger:hover {
-            transform: scale(1.1) rotate(10deg);
-            background: #4f46e5;
-        }
 
-        /* Multi-select styling */
-        .multi-select-box {
-            width: 100%;
-            min-height: 120px;
-            padding: 10px;
-            border-radius: 12px;
-            border: 1px solid #cbd5e1;
-            background: white;
-            font-family: inherit;
-            color: #1e293b;
-            outline: none;
-            cursor: pointer;
-        }
-        .multi-select-box option {
-            padding: 8px;
-            border-radius: 6px;
-            margin-bottom: 2px;
-        }
-        .multi-select-box option:checked {
-            background-color: var(--primary) !important;
-            color: white;
-        }
-
-        /* Broadcast Alert UI */
         .broadcast-alert {
             position: fixed;
             top: 20px;
@@ -115,10 +167,10 @@
 
     <div id="broadcastAlert" class="broadcast-alert"></div>
 
-    <div class="container" style="max-width: 850px; margin: 0 auto;">
+    <div class="container" style="max-width: 900px; margin: 0 auto;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 25px;">
             <div style="display: flex; align-items: center; gap: 10px;">
-                <div style="width: 12px; height: 12px; background: #22c55e; border-radius: 50%;"></div>
+                <div style="width: 12px; height: 12px; background: var(--success); border-radius: 50%;"></div>
                 <h2 style="margin: 0; color: #1e293b;">🚀 Sender Node</h2>
             </div>
             <a href="/logout" class="btn-logout">
@@ -128,33 +180,47 @@
 
         <div style="background:#f1f5f9; padding:25px; border-radius:15px; border: 1px solid #e2e8f0;">
             <label style="font-weight: bold; display: block; margin-bottom: 10px; color: #475569;">
-                <i class="fa-solid fa-users"></i> Recipient Selection 
-                <small style="font-weight: normal; color: #64748b; margin-left: 10px;">(Hold Ctrl/Cmd to select multiple)</small>
+                <i class="fa-solid fa-users"></i> Target Distribution Matrix
             </label>
             
-            <form action="/upload" method="post" enctype="multipart/form-data">
-                <select name="target_receivers" id="targetSelect" class="multi-select-box" multiple required>
-                    <option value="all" selected>📢 Broadcast to All Active Nodes</option>
-                    {% for r in receivers %}
-                    <option value="room_{{ r.phone }}">👤 {{ r.name }} ({{ r.phone }})</option>
-                    {% endfor %}
-                </select>
+            <form action="/upload" method="post" enctype="multipart/form-data" id="uploadForm">
+                <div class="receiver-grid">
+                    <label class="receiver-card active" id="label_all">
+                        <input type="checkbox" name="target_receivers" value="all" checked onchange="handleSelection(this, 'label_all')">
+                        <div class="tick-indicator"><i class="fa-solid fa-check"></i></div>
+                        <div class="receiver-info">
+                            <b>📢 Broadcast All</b>
+                            <small>Global Distribution</small>
+                        </div>
+                    </label>
 
-                <div style="border: 2px dashed var(--primary); padding: 30px; border-radius: 15px; text-align: center; background: #f5f7ff; margin-top: 20px;">
-                    <i class="fa-solid fa-cloud-arrow-up" style="font-size: 2rem; color: var(--primary); margin-bottom: 10px;"></i>
-                    <input type="file" name="file" required style="display: block; margin: 0 auto; width: 100%;">
-                    <p style="margin-top: 10px; font-size: 0.75rem; color: #64748b;">Supported Payload: Up to 500MB</p>
+                    {% for r in receivers %}
+                    <label class="receiver-card" id="label_{{ r.phone }}">
+                        <input type="checkbox" name="target_receivers" value="room_{{ r.phone }}" onchange="handleSelection(this, 'label_{{ r.phone }}')">
+                        <div class="tick-indicator"><i class="fa-solid fa-check"></i></div>
+                        <div class="receiver-info">
+                            <b>👤 {{ r.name }}</b>
+                            <small>ID: {{ r.phone }}</small>
+                        </div>
+                    </label>
+                    {% endfor %}
                 </div>
 
-                <button type="submit" class="btn" style="width: 100%; margin-top: 20px; padding: 15px; background: var(--dark);">
+                <div style="border: 2px dashed var(--primary); padding: 30px; border-radius: 15px; text-align: center; background: #f5f7ff; margin-top: 25px;">
+                    <i class="fa-solid fa-cloud-arrow-up" style="font-size: 2rem; color: var(--primary); margin-bottom: 10px;"></i>
+                    <input type="file" name="file" required style="display: block; margin: 0 auto; width: 100%;">
+                    <p style="margin-top: 10px; font-size: 0.75rem; color: #64748b;">Max Payload: 500MB | Encrypted on arrival</p>
+                </div>
+
+                <button type="submit" class="btn" style="width: 100%; margin-top: 20px; padding: 15px; background: var(--dark); font-weight: bold;">
                     <i class="fa-solid fa-share-nodes"></i> Initiate Secure Multi-Transmission
                 </button>
             </form>
         </div>
 
         <div style="margin-top: 35px;">
-            <h4 style="color: #475569; margin-bottom: 10px;"><i class="fa-solid fa-comments"></i> Network Chat</h4>
-            <div id="chatBox" style="height:200px; overflow-y:auto; background:#f8fafc; border:1px solid #e2e8f0; padding:15px; font-size:0.9rem; border-radius: 12px; margin-bottom: 15px;"></div>
+            <h4 style="color: #475569; margin-bottom: 10px;"><i class="fa-solid fa-comments"></i> Direct Communication Channel</h4>
+            <div id="chatBox" style="height:220px; overflow-y:auto; background:#f8fafc; border:1px solid #e2e8f0; padding:15px; font-size:0.9rem; border-radius: 12px; margin-bottom: 15px;"></div>
             
             <div style="display:flex; gap:10px;">
                 <input type="text" id="mInp" placeholder="Type message to selected recipients..." style="flex:1; padding: 12px; border-radius: 10px; border: 1px solid #cbd5e1; outline: none;">
@@ -170,6 +236,16 @@
     <script>
         const socket = io();
 
+        // Visual toggle for green tick cards
+        function handleSelection(checkbox, labelId) {
+            const card = document.getElementById(labelId);
+            if (checkbox.checked) {
+                card.classList.add('active');
+            } else {
+                card.classList.remove('active');
+            }
+        }
+
         function showAlert(text) {
             const alertBox = document.getElementById('broadcastAlert');
             alertBox.innerHTML = `<i class="fa-solid fa-bell"></i> ${text}`;
@@ -177,9 +253,10 @@
             setTimeout(() => { alertBox.style.display = 'none'; }, 4000);
         }
 
+        // Collect all checked target values
         function getSelectedTargets() {
-            const select = document.getElementById('targetSelect');
-            return Array.from(select.selectedOptions).map(option => option.value);
+            const checkboxes = document.querySelectorAll('input[name="target_receivers"]:checked');
+            return Array.from(checkboxes).map(cb => cb.value);
         }
 
         function sendMsg() {
@@ -194,7 +271,7 @@
                 }); 
                 msgInput.value = ""; 
             } else if (targets.length === 0) {
-                alert("Please select at least one recipient.");
+                alert("Please select at least one recipient or Broadcast.");
             }
         }
 
