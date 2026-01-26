@@ -1,42 +1,196 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <title>Shared File History</title>
-      <link rel="icon" type="image/png" href="/img/history.png?v=1.1">
-</head>
-<body style="background: #f8fafc;">
-    <div class="container" style="max-width: 800px;">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-            <h2>📂 Past Shared Files</h2>
-            <a href="/receiver" class="btn" style="width:auto; background:#64748b;">Back to Live Feed</a>
-        </div>
-        <p style="color:#64748b; font-size:0.9rem;">Note: Files are automatically deleted 24 hours after they are shared.</p>
+    <link rel="icon" type="image/png" href="/img/history.png?v=1.1">
+    <style>
+        :root {
+            --primary: #6366f1; /* Inkwake Blue */
+            --dark: #1e293b;
+            --slate: #f8fafc;
+            --success: #22c55e;
+        }
 
-        <div class="card" style="margin-top:20px; padding:0;">
-            <table style="width:100%; border-collapse: collapse;">
-                <thead style="background:#f1f5f9;">
-                    <tr>
-                        <th style="text-align:left; padding:15px;">File Name</th>
-                        <th style="text-align:right; padding:15px;">Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for f in files %}
-                    <tr style="border-bottom:1px solid #e2e8f0;">
-                        <td style="padding:15px;">{{ f }}</td>
-                        <td style="padding:15px; text-align:right;">
-                            <a href="/static/uploads/{{ f }}" download class="btn-action" style="color:#4a90e2; text-decoration:none; font-weight:bold;">📥 Download</a>
-                        </td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="2" style="padding:40px; text-align:center; color:#94a3b8;">No files found in recent history.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        body {
+            background-color: var(--slate);
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .history-container {
+            max-width: 850px;
+            margin: 40px auto;
+            background: white;
+            padding: 30px;
+            border-radius: 24px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.04);
+        }
+
+        .header-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 20px;
+            margin-bottom: 25px;
+        }
+
+        .back-btn {
+            background: transparent;
+            border: 1.5px solid #cbd5e1;
+            color: #64748b;
+            padding: 8px 18px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 0.85rem;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .back-btn:hover {
+            background: #f1f5f9;
+            color: var(--dark);
+            border-color: var(--dark);
+        }
+
+        /* File Item Styling */
+        .file-list {
+            display: grid;
+            gap: 12px;
+        }
+
+        .file-card {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 18px 24px;
+            background: #ffffff;
+            border: 1.5px solid #f1f5f9;
+            border-radius: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .file-card:hover {
+            border-color: var(--primary);
+            box-shadow: 0 4px 20px rgba(99, 102, 241, 0.08);
+            transform: translateY(-2px);
+        }
+
+        .file-meta {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .file-icon {
+            width: 45px;
+            height: 45px;
+            background: #f5f7ff;
+            color: var(--primary);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+
+        .file-name {
+            font-weight: 600;
+            color: var(--dark);
+            font-size: 0.95rem;
+            word-break: break-all;
+        }
+
+        .btn-download {
+            background: var(--success);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 0.85rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: 0.3s;
+            box-shadow: 0 4px 10px rgba(34, 197, 94, 0.2);
+        }
+
+        .btn-download:hover {
+            background: #16a34a;
+            box-shadow: 0 6px 15px rgba(34, 197, 94, 0.3);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #94a3b8;
+        }
+
+        .expiry-notice {
+            background: #fffbeb;
+            border: 1px solid #fef3c7;
+            color: #b45309;
+            padding: 12px 20px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="history-container">
+        <div class="header-section">
+            <h2 style="margin: 0; color: var(--dark); display: flex; align-items: center; gap: 12px;">
+                <i class="fa-solid fa-clock-rotate-left" style="color: var(--primary);"></i> Shared File History
+            </h2>
+            <a href="/receiver" class="back-btn">
+                <i class="fa-solid fa-arrow-left"></i> Live Feed
+            </a>
+        </div>
+
+        <div class="expiry-notice">
+            <i class="fa-solid fa-circle-info"></i>
+            <span>Privacy Protocol: Files are automatically purged from the node 24 hours after transmission.</span>
+        </div>
+
+        <div class="file-list">
+            {% if files %}
+                {% for f in files %}
+                <div class="file-card">
+                    <div class="file-meta">
+                        <div class="file-icon">
+                            <i class="fa-solid fa-file-shield"></i>
+                        </div>
+                        <div>
+                            <span class="file-name">{{ f }}</span>
+                        </div>
+                    </div>
+                    <a href="/static/uploads/{{ f }}" download class="btn-download">
+                        <i class="fa-solid fa-download"></i> Download
+                    </a>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state">
+                    <i class="fa-solid fa-folder-open" style="font-size: 3rem; margin-bottom: 15px; opacity: 0.3;"></i>
+                    <p>No active files found in the 24-hour transmission window.</p>
+                </div>
+            {% endif %}
         </div>
     </div>
+
 </body>
 </html>
