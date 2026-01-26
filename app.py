@@ -61,7 +61,7 @@ threading.Thread(target=auto_cleanup, daemon=True).start()
 # --- WebSocket Events ---
 @socketio.on('join_network')
 def on_join(data):
-    # Receiver joins a unique room based on their phone (e.g., room_9876543210)
+    # Every receiver joins a unique room based on their phone (e.g., room_9876543210)
     room = f"room_{data.get('phone')}"
     join_room(room)
 
@@ -74,8 +74,8 @@ def handle_heartbeat(data):
 
 @socketio.on('send_message')
 def handle_message(data):
-    """Handles multi-target chat messages"""
-    targets = data.get('targets') # Expecting a list from the frontend
+    """Handles multi-target chat messages for Broadcast or Individual/Multi-room"""
+    targets = data.get('targets') # List from multi-select
     display_name = session.get('user_name', session.get('role', 'Node')).capitalize()
     msg_payload = {
         'user': display_name, 
@@ -88,7 +88,7 @@ def handle_message(data):
     else:
         for t in targets:
             socketio.emit('new_message', msg_payload, room=t)
-        # Send confirmation back to sender
+        # Feedback for sender
         emit('new_message', msg_payload)
 
 # --- Routes ---
@@ -149,8 +149,20 @@ def admin():
 @app.route('/file_history')
 def file_history():
     if 'role' not in session: return redirect('/')
-    files = os.listdir(UPLOAD_FOLDER)
-    return render_template('history.html', files=files)
+    
+    files_data = []
+    if os.path.exists(UPLOAD_FOLDER):
+        for f in os.listdir(UPLOAD_FOLDER):
+            path = os.path.join(UPLOAD_FOLDER, f)
+            if os.path.isfile(path):
+                # Calculate hours remaining until 24h purge
+                mtime = os.path.getmtime(path)
+                remaining = int(((mtime + 86400) - time.time()) / 3600)
+                files_data.append({
+                    'name': f,
+                    'remaining': max(0, remaining)
+                })
+    return render_template('history.html', files=files_data)
 
 @app.route('/feedback_page')
 def feedback_page():
@@ -187,14 +199,14 @@ def receiver():
 def sender():
     if session.get('role') != 'sender': return redirect('/')
     with get_db() as conn:
-        # Fetch active receivers seen in the last 5 minutes
+        # Fetch receivers seen in last 5 minutes
         receivers = conn.execute('SELECT DISTINCT name, phone FROM active_receivers WHERE last_seen > datetime("now", "-5 minutes")').fetchall()
     return render_template('sender.html', receivers=receivers)
 
 @app.route('/upload', methods=['POST'])
 def upload():
     file = request.files.get('file')
-    targets = request.form.getlist('target_receivers') # Gets multi-select list
+    targets = request.form.getlist('target_receivers') # Multi-select list
     
     if file:
         filename = "".join([c for c in file.filename if c.isalnum() or c in ('.', '_')]).strip()
