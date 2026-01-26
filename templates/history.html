@@ -13,11 +13,12 @@
             --dark: #1e293b;
             --slate: #f8fafc;
             --success: #22c55e;
+            --danger: #ef4444;
         }
 
         body {
             background-color: var(--slate);
-            font-family: 'Inter', sans-serif;
+            font-family: 'Inter', -apple-system, sans-serif;
             margin: 0;
             padding: 20px;
         }
@@ -61,7 +62,6 @@
             border-color: var(--dark);
         }
 
-        /* File Item Styling */
         .file-list {
             display: grid;
             gap: 12px;
@@ -109,6 +109,16 @@
             word-break: break-all;
         }
 
+        .time-badge {
+            font-size: 0.75rem;
+            color: var(--danger);
+            margin-top: 4px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-weight: 500;
+        }
+
         .btn-download {
             background: var(--success);
             color: white;
@@ -147,6 +157,18 @@
             gap: 10px;
             margin-bottom: 20px;
         }
+
+        @media (max-width: 600px) {
+            .file-card {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+            }
+            .btn-download {
+                width: 100%;
+                justify-content: center;
+            }
+        }
     </style>
 </head>
 <body>
@@ -162,8 +184,8 @@
         </div>
 
         <div class="expiry-notice">
-            <i class="fa-solid fa-circle-info"></i>
-            <span>Privacy Protocol: Files are automatically purged from the node 24 hours after transmission.</span>
+            <i class="fa-solid fa-shield-halved"></i>
+            <span>Privacy Protocol: Files are temporary and will be purged 24 hours after upload.</span>
         </div>
 
         <div class="file-list">
@@ -175,10 +197,14 @@
                             <i class="fa-solid fa-file-shield"></i>
                         </div>
                         <div>
-                            <span class="file-name">{{ f }}</span>
+                            <div class="file-name">{{ f.name }}</div>
+                            <div class="time-badge">
+                                <i class="fa-regular fa-clock"></i> 
+                                Expires in: {{ f.remaining }} hours
+                            </div>
                         </div>
                     </div>
-                    <a href="/static/uploads/{{ f }}" download class="btn-download">
+                    <a href="/static/uploads/{{ f.name }}" download class="btn-download">
                         <i class="fa-solid fa-download"></i> Download
                     </a>
                 </div>
