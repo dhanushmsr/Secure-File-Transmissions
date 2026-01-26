@@ -44,7 +44,7 @@
             grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
             gap: 15px;
             margin-top: 15px;
-            max-height: 300px;
+            max-height: 320px;
             overflow-y: auto;
             padding: 5px;
         }
@@ -103,6 +103,36 @@
             display: block;
         }
 
+        /* Status Badge Styling */
+        .status-badge {
+            font-size: 0.65rem;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-top: 4px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .status-online { background: #dcfce7; color: #166534; }
+        .status-offline { background: #f1f5f9; color: #64748b; }
+
+        .pulse-dot {
+            width: 6px;
+            height: 6px;
+            background: #22c55e;
+            border-radius: 50%;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.2); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
         .receiver-info b {
             display: block;
             font-size: 0.9rem;
@@ -112,10 +142,7 @@
             text-overflow: ellipsis;
         }
 
-        .receiver-info small {
-            color: #64748b;
-            font-size: 0.75rem;
-        }
+        .receiver-info small { color: #64748b; font-size: 0.75rem; }
 
         /* Floating Feedback Icon */
         .feedback-trigger {
@@ -190,17 +217,21 @@
                         <div class="tick-indicator"><i class="fa-solid fa-check"></i></div>
                         <div class="receiver-info">
                             <b>📢 Broadcast All</b>
-                            <small>Global Distribution</small>
+                            <div class="status-badge status-online">
+                                <div class="pulse-dot"></div> Network Global
+                            </div>
                         </div>
                     </label>
 
                     {% for r in receivers %}
-                    <label class="receiver-card" id="label_{{ r.phone }}">
+                    <label class="receiver-card" id="label_{{ r.phone }}" data-last-seen="{{ r.last_seen }}">
                         <input type="checkbox" name="target_receivers" value="room_{{ r.phone }}" onchange="handleSelection(this, 'label_{{ r.phone }}')">
                         <div class="tick-indicator"><i class="fa-solid fa-check"></i></div>
                         <div class="receiver-info">
                             <b>👤 {{ r.name }}</b>
-                            <small>ID: {{ r.phone }}</small>
+                            <div class="status-badge status-online" id="status_{{ r.phone }}">
+                                <div class="pulse-dot"></div> Active Now
+                            </div>
                         </div>
                     </label>
                     {% endfor %}
@@ -209,7 +240,7 @@
                 <div style="border: 2px dashed var(--primary); padding: 30px; border-radius: 15px; text-align: center; background: #f5f7ff; margin-top: 25px;">
                     <i class="fa-solid fa-cloud-arrow-up" style="font-size: 2rem; color: var(--primary); margin-bottom: 10px;"></i>
                     <input type="file" name="file" required style="display: block; margin: 0 auto; width: 100%;">
-                    <p style="margin-top: 10px; font-size: 0.75rem; color: #64748b;">Max Payload: 500MB | Encrypted on arrival</p>
+                    <p style="margin-top: 10px; font-size: 0.75rem; color: #64748b;">Max Payload: 500MB | Automatic 24h Purge</p>
                 </div>
 
                 <button type="submit" class="btn" style="width: 100%; margin-top: 20px; padding: 15px; background: var(--dark); font-weight: bold;">
@@ -246,6 +277,36 @@
             }
         }
 
+        // Real-time status monitor logic
+        function updateLiveStatus() {
+            const cards = document.querySelectorAll('.receiver-card[data-last-seen]');
+            const now = new Date();
+
+            cards.forEach(card => {
+                // Parse last_seen from DB
+                const lastSeenStr = card.getAttribute('data-last-seen');
+                const lastSeen = new Date(lastSeenStr + " UTC"); // Ensure UTC context
+                const diffSeconds = (now - lastSeen) / 1000;
+                
+                const phone = card.id.replace('label_', '');
+                const badge = document.getElementById(`status_${phone}`);
+
+                if (badge) {
+                    if (diffSeconds > 15) {
+                        badge.className = "status-badge status-offline";
+                        badge.innerHTML = '<i class="fa-solid fa-circle-xmark"></i> Offline';
+                    } else {
+                        badge.className = "status-badge status-online";
+                        badge.innerHTML = '<div class="pulse-dot"></div> Active Now';
+                    }
+                }
+            });
+        }
+
+        // Run status check every 5 seconds
+        setInterval(updateLiveStatus, 5000);
+        window.onload = updateLiveStatus;
+
         function showAlert(text) {
             const alertBox = document.getElementById('broadcastAlert');
             alertBox.innerHTML = `<i class="fa-solid fa-bell"></i> ${text}`;
@@ -253,7 +314,6 @@
             setTimeout(() => { alertBox.style.display = 'none'; }, 4000);
         }
 
-        // Collect all checked target values
         function getSelectedTargets() {
             const checkboxes = document.querySelectorAll('input[name="target_receivers"]:checked');
             return Array.from(checkboxes).map(cb => cb.value);
@@ -271,7 +331,7 @@
                 }); 
                 msgInput.value = ""; 
             } else if (targets.length === 0) {
-                alert("Please select at least one recipient or Broadcast.");
+                alert("Please select at least one recipient.");
             }
         }
 
