@@ -61,7 +61,6 @@ threading.Thread(target=auto_cleanup, daemon=True).start()
 # --- WebSocket Events ---
 @socketio.on('join_network')
 def on_join(data):
-    # Every receiver joins a unique room based on their phone (e.g., room_9876543210)
     room = f"room_{data.get('phone')}"
     join_room(room)
 
@@ -74,8 +73,7 @@ def handle_heartbeat(data):
 
 @socketio.on('send_message')
 def handle_message(data):
-    """Handles multi-target chat messages for Broadcast or Individual/Multi-room"""
-    targets = data.get('targets') # List from multi-select
+    targets = data.get('targets')
     display_name = session.get('user_name', session.get('role', 'Node')).capitalize()
     msg_payload = {
         'user': display_name, 
@@ -88,7 +86,6 @@ def handle_message(data):
     else:
         for t in targets:
             socketio.emit('new_message', msg_payload, room=t)
-        # Feedback for sender
         emit('new_message', msg_payload)
 
 # --- Routes ---
@@ -155,7 +152,6 @@ def file_history():
         for f in os.listdir(UPLOAD_FOLDER):
             path = os.path.join(UPLOAD_FOLDER, f)
             if os.path.isfile(path):
-                # Calculate hours remaining until 24h purge
                 mtime = os.path.getmtime(path)
                 remaining = int(((mtime + 86400) - time.time()) / 3600)
                 files_data.append({
@@ -163,6 +159,15 @@ def file_history():
                     'remaining': max(0, remaining)
                 })
     return render_template('history.html', files=files_data)
+
+@app.route('/delete/<filename>')
+def delete_file(filename):
+    """FIXED: Admin route to delete files from server storage."""
+    if session.get('role') == 'admin':
+        path = os.path.join(UPLOAD_FOLDER, filename)
+        if os.path.exists(path): 
+            os.remove(path)
+    return redirect(url_for('admin'))
 
 @app.route('/feedback_page')
 def feedback_page():
@@ -199,14 +204,13 @@ def receiver():
 def sender():
     if session.get('role') != 'sender': return redirect('/')
     with get_db() as conn:
-        # Fetch receivers seen in last 5 minutes
         receivers = conn.execute('SELECT DISTINCT name, phone FROM active_receivers WHERE last_seen > datetime("now", "-5 minutes")').fetchall()
     return render_template('sender.html', receivers=receivers)
 
 @app.route('/upload', methods=['POST'])
 def upload():
     file = request.files.get('file')
-    targets = request.form.getlist('target_receivers') # Multi-select list
+    targets = request.form.getlist('target_receivers') 
     
     if file:
         filename = "".join([c for c in file.filename if c.isalnum() or c in ('.', '_')]).strip()
