@@ -87,7 +87,7 @@
             display: none;
         }
 
-        /* Active/Checked State */
+        /* Active State */
         .receiver-card.active {
             border-color: var(--success);
             background: #f0fdf4;
@@ -137,12 +137,7 @@
             display: block;
             font-size: 0.9rem;
             color: #1e293b;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
         }
-
-        .receiver-info small { color: #64748b; font-size: 0.75rem; }
 
         /* Floating Feedback Icon */
         .feedback-trigger {
@@ -240,7 +235,7 @@
                 <div style="border: 2px dashed var(--primary); padding: 30px; border-radius: 15px; text-align: center; background: #f5f7ff; margin-top: 25px;">
                     <i class="fa-solid fa-cloud-arrow-up" style="font-size: 2rem; color: var(--primary); margin-bottom: 10px;"></i>
                     <input type="file" name="file" required style="display: block; margin: 0 auto; width: 100%;">
-                    <p style="margin-top: 10px; font-size: 0.75rem; color: #64748b;">Max Payload: 500MB | Automatic 24h Purge</p>
+                    <p style="margin-top: 10px; font-size: 0.75rem; color: #64748b;">Max Payload: 500MB | Secure Transmission</p>
                 </div>
 
                 <button type="submit" class="btn" style="width: 100%; margin-top: 20px; padding: 15px; background: var(--dark); font-weight: bold;">
@@ -250,7 +245,7 @@
         </div>
 
         <div style="margin-top: 35px;">
-            <h4 style="color: #475569; margin-bottom: 10px;"><i class="fa-solid fa-comments"></i> Direct Communication Channel</h4>
+            <h4 style="color: #475569; margin-bottom: 10px;"><i class="fa-solid fa-comments"></i> Direct Communication</h4>
             <div id="chatBox" style="height:220px; overflow-y:auto; background:#f8fafc; border:1px solid #e2e8f0; padding:15px; font-size:0.9rem; border-radius: 12px; margin-bottom: 15px;"></div>
             
             <div style="display:flex; gap:10px;">
@@ -267,7 +262,7 @@
     <script>
         const socket = io();
 
-        // Visual toggle for green tick cards
+        // Card Selection Toggle
         function handleSelection(checkbox, labelId) {
             const card = document.getElementById(labelId);
             if (checkbox.checked) {
@@ -277,15 +272,14 @@
             }
         }
 
-        // Real-time status monitor logic
+        // Real-time Status Logic
         function updateLiveStatus() {
             const cards = document.querySelectorAll('.receiver-card[data-last-seen]');
             const now = new Date();
 
             cards.forEach(card => {
-                // Parse last_seen from DB
                 const lastSeenStr = card.getAttribute('data-last-seen');
-                const lastSeen = new Date(lastSeenStr + " UTC"); // Ensure UTC context
+                const lastSeen = new Date(lastSeenStr + " UTC");
                 const diffSeconds = (now - lastSeen) / 1000;
                 
                 const phone = card.id.replace('label_', '');
@@ -303,7 +297,6 @@
             });
         }
 
-        // Run status check every 5 seconds
         setInterval(updateLiveStatus, 5000);
         window.onload = updateLiveStatus;
 
