@@ -61,11 +61,13 @@ threading.Thread(target=auto_cleanup, daemon=True).start()
 # --- WebSocket Events ---
 @socketio.on('join_network')
 def on_join(data):
+    """Assigns each receiver to a unique room based on their phone number."""
     room = f"room_{data.get('phone')}"
     join_room(room)
 
 @socketio.on('heartbeat')
 def handle_heartbeat(data):
+    """Updates the last_seen status for the professional Status Badges."""
     with get_db() as conn:
         conn.execute('UPDATE active_receivers SET last_seen = CURRENT_TIMESTAMP WHERE name=? AND phone=?', 
                      (data.get('name'), data.get('phone')))
@@ -73,6 +75,7 @@ def handle_heartbeat(data):
 
 @socketio.on('send_message')
 def handle_message(data):
+    """Handles real-time chat with support for Broadcast and targeted Multi-Recipient rooms."""
     targets = data.get('targets')
     display_name = session.get('user_name', session.get('role', 'Node')).capitalize()
     msg_payload = {
@@ -152,6 +155,7 @@ def file_history():
         for f in os.listdir(UPLOAD_FOLDER):
             path = os.path.join(UPLOAD_FOLDER, f)
             if os.path.isfile(path):
+                # Calculate hours remaining until 24h purge
                 mtime = os.path.getmtime(path)
                 remaining = int(((mtime + 86400) - time.time()) / 3600)
                 files_data.append({
@@ -202,13 +206,16 @@ def receiver():
 
 @app.route('/sender')
 def sender():
+    """Fetches recently active receivers for the professional card-based Matrix."""
     if session.get('role') != 'sender': return redirect('/')
     with get_db() as conn:
-        receivers = conn.execute('SELECT DISTINCT name, phone FROM active_receivers WHERE last_seen > datetime("now", "-5 minutes")').fetchall()
+        # Fetches users active in last 10 minutes to populate the grid
+        receivers = conn.execute('SELECT DISTINCT name, phone, last_seen FROM active_receivers WHERE last_seen > datetime("now", "-10 minutes")').fetchall()
     return render_template('sender.html', receivers=receivers)
 
 @app.route('/upload', methods=['POST'])
 def upload():
+    """Handles secure file uploads with targeted room-based notifications."""
     file = request.files.get('file')
     targets = request.form.getlist('target_receivers') 
     
