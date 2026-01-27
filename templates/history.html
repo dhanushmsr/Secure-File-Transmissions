@@ -5,15 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="/static/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <title>Shared File History</title>
+    <title>Inkwake | Secure History</title>
     <link rel="icon" type="image/png" href="/img/history.png?v=1.1">
     <style>
         :root {
-            --primary: #6366f1; /* Inkwake Blue */
+            --primary: #6366f1;
             --dark: #1e293b;
             --slate: #f8fafc;
             --success: #22c55e;
             --danger: #ef4444;
+            --warning: #f59e0b;
         }
 
         body {
@@ -50,16 +51,47 @@
             text-decoration: none;
             font-weight: bold;
             font-size: 0.85rem;
-            transition: all 0.3s ease;
+            transition: 0.3s;
             display: inline-flex;
             align-items: center;
             gap: 8px;
         }
 
         .back-btn:hover {
-            background: #f1f5f9;
-            color: var(--dark);
+            background: var(--dark);
+            color: white;
             border-color: var(--dark);
+        }
+
+        /* Search Bar Styling */
+        .search-container {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .search-bar {
+            width: 100%;
+            padding: 12px 20px 12px 45px;
+            border-radius: 12px;
+            border: 1.5px solid #e2e8f0;
+            background: #fff;
+            font-size: 0.9rem;
+            outline: none;
+            transition: 0.3s;
+            box-sizing: border-box;
+        }
+
+        .search-bar:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94a3b8;
         }
 
         .file-list {
@@ -75,7 +107,7 @@
             background: #ffffff;
             border: 1.5px solid #f1f5f9;
             border-radius: 16px;
-            transition: all 0.3s ease;
+            transition: 0.3s;
         }
 
         .file-card:hover {
@@ -107,7 +139,27 @@
             color: var(--dark);
             font-size: 0.95rem;
             word-break: break-all;
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
         }
+
+        /* Privacy Badge Styling */
+        .badge {
+            font-size: 0.65rem;
+            font-weight: 800;
+            padding: 3px 10px;
+            border-radius: 20px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .badge-public { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+        .badge-private { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
 
         .time-badge {
             font-size: 0.75rem;
@@ -136,7 +188,6 @@
 
         .btn-download:hover {
             background: #16a34a;
-            box-shadow: 0 6px 15px rgba(34, 197, 94, 0.3);
         }
 
         .empty-state {
@@ -146,9 +197,9 @@
         }
 
         .expiry-notice {
-            background: #fffbeb;
-            border: 1px solid #fef3c7;
-            color: #b45309;
+            background: #eff6ff;
+            border: 1px solid #dbeafe;
+            color: #1e40af;
             padding: 12px 20px;
             border-radius: 12px;
             font-size: 0.85rem;
@@ -176,19 +227,24 @@
     <div class="history-container">
         <div class="header-section">
             <h2 style="margin: 0; color: var(--dark); display: flex; align-items: center; gap: 12px;">
-                <i class="fa-solid fa-clock-rotate-left" style="color: var(--primary);"></i> Shared File History
+                <i class="fa-solid fa-clock-rotate-left" style="color: var(--primary);"></i> Secure History
             </h2>
-            <a href="/receiver" class="back-btn">
-                <i class="fa-solid fa-arrow-left"></i> Live Feed
+            <a href="/" class="back-btn">
+                <i class="fa-solid fa-arrow-left"></i> Hub
             </a>
         </div>
 
         <div class="expiry-notice">
-            <i class="fa-solid fa-shield-halved"></i>
-            <span>Privacy Protocol: Files are temporary and will be purged 24 hours after upload.</span>
+            <i class="fa-solid fa-user-shield"></i>
+            <span>Privacy Filter Active: Showing only files authorized for your node.</span>
         </div>
 
-        <div class="file-list">
+        <div class="search-container">
+            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+            <input type="text" id="fileSearch" class="search-bar" placeholder="Search for files..." onkeyup="filterFiles()">
+        </div>
+
+        <div class="file-list" id="fileList">
             {% if files %}
                 {% for f in files %}
                 <div class="file-card">
@@ -197,10 +253,17 @@
                             <i class="fa-solid fa-file-shield"></i>
                         </div>
                         <div>
-                            <div class="file-name">{{ f.name }}</div>
+                            <div class="file-name">
+                                <span class="name-text">{{ f.name }}</span>
+                                {% if f.privacy == 'Public' %}
+                                    <span class="badge badge-public"><i class="fa-solid fa-earth-americas"></i> Public</span>
+                                {% else %}
+                                    <span class="badge badge-private"><i class="fa-solid fa-lock"></i> Private</span>
+                                {% endif %}
+                            </div>
                             <div class="time-badge">
                                 <i class="fa-regular fa-clock"></i> 
-                                Expires in: {{ f.remaining }} hours
+                                Purge in: {{ f.remaining }} hours
                             </div>
                         </div>
                     </div>
@@ -212,11 +275,28 @@
             {% else %}
                 <div class="empty-state">
                     <i class="fa-solid fa-folder-open" style="font-size: 3rem; margin-bottom: 15px; opacity: 0.3;"></i>
-                    <p>No active files found in the 24-hour transmission window.</p>
+                    <p>No authorized files found in the current transmission window.</p>
                 </div>
             {% endif %}
         </div>
     </div>
 
+    <script>
+        function filterFiles() {
+            const input = document.getElementById('fileSearch');
+            const filter = input.value.toLowerCase();
+            const list = document.getElementById('fileList');
+            const cards = list.getElementsByClassName('file-card');
+
+            for (let i = 0; i < cards.length; i++) {
+                const fileName = cards[i].querySelector('.name-text').innerText;
+                if (fileName.toLowerCase().indexOf(filter) > -1) {
+                    cards[i].style.display = "";
+                } else {
+                    cards[i].style.display = "none";
+                }
+            }
+        }
+    </script>
 </body>
 </html>
