@@ -1,13 +1,16 @@
 import os, sqlite3, psutil, time, threading
-from flask import Flask, render_template, request, redirect, url_for, session, Response, abort, send_from_directory
-from flask_socketio import SocketIO, emit, join_room
+from flask import Flask, render_template, request, redirect, url_for, session, abort, send_from_directory, Response
+from flask_socketio import SocketIO, emit, join_room, leave_room
 
 app = Flask(__name__)
 app.secret_key = "secure_transmission_ultra_2026"
 
 # Support for 500MB uploads
 app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024 
-socketio = SocketIO(app, cors_allowed_origins="*")
+
+# Automatic engine selection (eventlet/threading)
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode=None)
+
 UPLOAD_FOLDER = 'static/uploads'
 IMG_FOLDER = 'img'
 
@@ -16,7 +19,7 @@ if not os.path.exists(UPLOAD_FOLDER):
 
 # --- Database Core ---
 def get_db():
-    conn = sqlite3.connect('transmission_system.db')
+    conn = sqlite3.connect('transmission_system.db', timeout=10)
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -35,6 +38,9 @@ def init_db():
                          role TEXT, message TEXT, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
         conn.execute('''CREATE TABLE IF NOT EXISTS blacklist 
                         (ip TEXT PRIMARY KEY, reason TEXT, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
+        
+        # CLEANUP: Remove "Ghost" users on restart
+        conn.execute('DELETE FROM active_receivers')
         
         cursor = conn.cursor()
         cursor.execute("SELECT COUNT(*) FROM users")
@@ -59,43 +65,37 @@ def auto_cleanup():
 threading.Thread(target=auto_cleanup, daemon=True).start()
 
 # --- WebSocket Events ---
+
 @socketio.on('join_network')
 def on_join(data):
-    """Assigns each receiver to a unique room based on their phone number."""
-    room = f"room_{data.get('phone')}"
-    join_room(room)
+    phone, name = data.get('phone'), data.get('name')
+    join_room(f"room_{phone}")
+    session['user_phone'] = phone 
+    socketio.emit('update_user_list', {'name': name, 'phone': phone})
+
+@socketio.on('disconnect')
+def on_disconnect():
+    phone = session.get('user_phone')
+    if phone: socketio.emit('remove_user_list', {'phone': phone})
 
 @socketio.on('heartbeat')
 def handle_heartbeat(data):
-    """Updates the last_seen status for the professional Status Badges."""
     with get_db() as conn:
-        conn.execute('UPDATE active_receivers SET last_seen = CURRENT_TIMESTAMP WHERE name=? AND phone=?', 
-                     (data.get('name'), data.get('phone')))
+        conn.execute('UPDATE active_receivers SET last_seen = CURRENT_TIMESTAMP WHERE phone=?', (data.get('phone'),))
         conn.commit()
 
 @socketio.on('send_message')
 def handle_message(data):
-    """Handles real-time chat with support for Broadcast and targeted Multi-Recipient rooms."""
-    targets = data.get('targets')
+    targets = data.get('targets', ['all'])
     display_name = session.get('user_name', session.get('role', 'Node')).capitalize()
-    msg_payload = {
-        'user': display_name, 
-        'msg': data.get('msg'), 
-        'time': time.strftime('%H:%M')
-    }
-    
+    msg_payload = {'user': display_name, 'msg': data.get('msg'), 'time': time.strftime('%H:%M')}
     if "all" in targets:
         socketio.emit('new_message', msg_payload)
     else:
-        for t in targets:
-            socketio.emit('new_message', msg_payload, room=t)
+        for t in targets: socketio.emit('new_message', msg_payload, room=t)
         emit('new_message', msg_payload)
 
-# --- Routes ---
-
-@app.route('/img/<path:filename>')
-def serve_custom_images(filename):
-    return send_from_directory(IMG_FOLDER, filename)
+# --- Primary Routes ---
 
 @app.route('/')
 def login_page():
@@ -109,8 +109,7 @@ def auth():
     user_ip = request.remote_addr
 
     with get_db() as conn:
-        blocked = conn.execute('SELECT * FROM blacklist WHERE ip=?', (user_ip,)).fetchone()
-        if blocked:
+        if conn.execute('SELECT * FROM blacklist WHERE ip=?', (user_ip,)).fetchone():
             abort(403, description="IP Blocked")
 
         user = conn.execute('SELECT * FROM users WHERE role=? AND password=?', (role, password)).fetchone()
@@ -118,6 +117,7 @@ def auth():
             session['role'] = role
             if role == 'receiver':
                 session['user_name'], session['user_phone'] = name, phone
+                conn.execute('DELETE FROM active_receivers WHERE phone=?', (phone,))
                 conn.execute('INSERT INTO active_receivers (name, phone) VALUES (?, ?)', (name, phone))
             conn.commit()
             return redirect(url_for(role))
@@ -126,70 +126,69 @@ def auth():
             conn.commit()
             return redirect(url_for('login_page', error='true'))
 
+@app.route('/sender')
+def sender():
+    if session.get('role') != 'sender': return redirect('/')
+    with get_db() as conn:
+        receivers = conn.execute("SELECT DISTINCT name, phone FROM active_receivers WHERE last_seen > datetime('now', '-2 minutes')").fetchall()
+    return render_template('sender.html', receivers=receivers)
+
+@app.route('/receiver')
+def receiver():
+    if session.get('role') != 'receiver': return redirect('/')
+    return render_template('receiver.html', user_name=session.get('user_name'))
+
+@app.route('/upload', methods=['POST'])
+def upload():
+    file = request.files.get('file')
+    target_str = request.form.get('target_receiver', 'all') 
+    if file:
+        filename = "".join([c for c in file.filename if c.isalnum() or c in ('.', '_')]).strip()
+        file.save(os.path.join(UPLOAD_FOLDER, filename))
+        targets = target_str.split(',')
+        if "all" in targets: socketio.emit('notify_receiver', {'filename': filename})
+        else:
+            for t in targets: socketio.emit('notify_receiver', {'filename': filename}, room=t)
+        return redirect(url_for('sender', success='true'))
+    return redirect(url_for('sender'))
+
+# --- Admin Functionality Routes ---
+
 @app.route('/admin')
 def admin():
     if session.get('role') != 'admin': return redirect('/')
     files = os.listdir(UPLOAD_FOLDER)
     total_size = sum(os.path.getsize(os.path.join(UPLOAD_FOLDER, f)) for f in files if os.path.isfile(os.path.join(UPLOAD_FOLDER, f)))
-    used_mb = round(total_size / (1024 * 1024), 2)
     health = {"cpu": psutil.cpu_percent(), "ram": psutil.virtual_memory().percent}
-    
     with get_db() as conn:
-        receivers = conn.execute('''SELECT *, (strftime('%s', last_seen) - strftime('%s', login_time)) / 60 as duration 
-                                    FROM active_receivers ORDER BY login_time DESC''').fetchall()
         failed_logs = conn.execute('SELECT * FROM security_logs ORDER BY timestamp DESC LIMIT 20').fetchall()
         feedbacks = conn.execute('SELECT * FROM feedback ORDER BY timestamp DESC').fetchall()
         blacklisted_ips = conn.execute('SELECT * FROM blacklist ORDER BY timestamp DESC').fetchall()
-        
-    return render_template('admin.html', files=files, used_mb=used_mb, 
-                           percent=min((used_mb/500)*100, 100), health=health, 
-                           receivers=receivers, failed_logs=failed_logs, 
-                           feedbacks=feedbacks, blacklisted_ips=blacklisted_ips)
+    return render_template('admin.html', files=files, used_mb=round(total_size/(1024*1024),2), 
+                           health=health, failed_logs=failed_logs, feedbacks=feedbacks, blacklisted_ips=blacklisted_ips)
 
-@app.route('/file_history')
-def file_history():
-    if 'role' not in session: return redirect('/')
-    
-    files_data = []
-    if os.path.exists(UPLOAD_FOLDER):
-        for f in os.listdir(UPLOAD_FOLDER):
-            path = os.path.join(UPLOAD_FOLDER, f)
-            if os.path.isfile(path):
-                # Calculate hours remaining until 24h purge
-                mtime = os.path.getmtime(path)
-                remaining = int(((mtime + 86400) - time.time()) / 3600)
-                files_data.append({
-                    'name': f,
-                    'remaining': max(0, remaining)
-                })
-    return render_template('history.html', files=files_data)
-
-@app.route('/delete/<filename>')
+@app.route('/delete/<path:filename>')
 def delete_file(filename):
-    """FIXED: Admin route to delete files from server storage."""
     if session.get('role') == 'admin':
         path = os.path.join(UPLOAD_FOLDER, filename)
-        if os.path.exists(path): 
-            os.remove(path)
+        if os.path.exists(path): os.remove(path)
     return redirect(url_for('admin'))
 
-@app.route('/feedback_page')
-def feedback_page():
-    if 'role' not in session: return redirect('/')
-    display_name = session.get('user_name', session.get('role').capitalize())
-    return render_template('feedback.html', user_name=display_name)
-
-@app.route('/submit_feedback', methods=['POST'])
-def submit_feedback():
-    if 'role' not in session: return redirect('/')
-    name = session.get('user_name', session.get('role').capitalize())
-    role = session.get('role')
-    msg = request.form.get('feedback_msg')
-    if msg:
+@app.route('/blacklist_ip/<ip>')
+def blacklist_ip(ip):
+    if session.get('role') == 'admin':
         with get_db() as conn:
-            conn.execute('INSERT INTO feedback (sender_name, role, message) VALUES (?, ?, ?)', (name, role, msg))
+            conn.execute('INSERT OR IGNORE INTO blacklist (ip, reason) VALUES (?, ?)', (ip, "Admin Block"))
             conn.commit()
-    return redirect(url_for(role, feedback_success='true'))
+    return redirect(url_for('admin'))
+
+@app.route('/unblock_ip/<ip>')
+def unblock_ip(ip):
+    if session.get('role') == 'admin':
+        with get_db() as conn:
+            conn.execute('DELETE FROM blacklist WHERE ip=?', (ip,))
+            conn.commit()
+    return redirect(url_for('admin'))
 
 @app.route('/delete_feedback/<int:id>')
 def delete_feedback(id):
@@ -199,44 +198,82 @@ def delete_feedback(id):
             conn.commit()
     return redirect(url_for('admin'))
 
-@app.route('/receiver')
-def receiver():
-    if session.get('role') != 'receiver': return redirect('/')
-    return render_template('receiver.html', user_name=session.get('user_name'))
+@app.route('/clear_feedback')
+def clear_feedback():
+    if session.get('role') == 'admin':
+        with get_db() as conn:
+            conn.execute('DELETE FROM feedback')
+            conn.commit()
+    return redirect(url_for('admin'))
 
-@app.route('/sender')
-def sender():
-    """Fetches recently active receivers for the professional card-based Matrix."""
-    if session.get('role') != 'sender': return redirect('/')
-    with get_db() as conn:
-        # Fetches users active in last 10 minutes to populate the grid
-        receivers = conn.execute('SELECT DISTINCT name, phone, last_seen FROM active_receivers WHERE last_seen > datetime("now", "-10 minutes")').fetchall()
-    return render_template('sender.html', receivers=receivers)
+@app.route('/clear_ids')
+def clear_ids():
+    if session.get('role') == 'admin':
+        with get_db() as conn:
+            conn.execute('DELETE FROM security_logs')
+            conn.commit()
+        return redirect(url_for('admin', ids_cleared='true'))
+    return redirect('/')
 
-@app.route('/upload', methods=['POST'])
-def upload():
-    """Handles secure file uploads with targeted room-based notifications."""
-    file = request.files.get('file')
-    targets = request.form.getlist('target_receivers') 
-    
-    if file:
-        filename = "".join([c for c in file.filename if c.isalnum() or c in ('.', '_')]).strip()
-        file.save(os.path.join(UPLOAD_FOLDER, filename))
-        
-        if "all" in targets:
-            socketio.emit('notify_receiver', {'filename': filename})
-        else:
-            for t in targets:
-                socketio.emit('notify_receiver', {'filename': filename}, room=t)
-            
-        return redirect(url_for('sender', success='true'))
-    return redirect(url_for('sender'))
+@app.route('/change_password', methods=['POST'])
+def change_password():
+    if session.get('role') == 'admin':
+        target = request.form.get('target_role')
+        new_pass = request.form.get('new_password')
+        with get_db() as conn:
+            conn.execute('UPDATE users SET password = ? WHERE role = ?', (new_pass, target))
+            conn.commit()
+        # Redirect with success parameters for the JavaScript alert
+        return redirect(url_for('admin', pass_success='true', role=target))
+    return redirect('/')
+
+# --- Shared Utilities ---
+
+@app.route('/feedback_page')
+def feedback_page():
+    if 'role' not in session: return redirect('/')
+    return render_template('feedback.html', user_name=session.get('user_name', session.get('role').capitalize()))
+
+@app.route('/submit_feedback', methods=['POST'])
+def submit_feedback():
+    if 'role' not in session: return redirect('/')
+    msg = request.form.get('feedback_msg')
+    if msg:
+        with get_db() as conn:
+            conn.execute('INSERT INTO feedback (sender_name, role, message) VALUES (?, ?, ?)', 
+                         (session.get('user_name', 'System'), session.get('role'), msg))
+            conn.commit()
+    return redirect(url_for(session.get('role')))
+
+@app.route('/file_history')
+def file_history():
+    if 'role' not in session: return redirect('/')
+    files_data = []
+    for f in os.listdir(UPLOAD_FOLDER):
+        path = os.path.join(UPLOAD_FOLDER, f)
+        if os.path.isfile(path):
+            remaining = int(((os.path.getmtime(path) + 86400) - time.time()) / 3600)
+            files_data.append({'name': f, 'remaining': max(0, remaining)})
+    return render_template('history.html', files=files_data)
 
 @app.route('/logout')
 def logout():
+    phone, role = session.get('user_phone'), session.get('role')
+    if role == 'receiver' and phone:
+        with get_db() as conn:
+            conn.execute('DELETE FROM active_receivers WHERE phone = ?', (phone,))
+            conn.commit()
     session.clear()
     return redirect(url_for('login_page'))
 
+@app.route('/img/<path:filename>')
+def serve_images(filename):
+    return send_from_directory(IMG_FOLDER, filename)
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    socketio.run(app, host='0.0.0.0', port=port)
+    print("\n" + "="*50)
+    print("INKWAKE SECURE HUB v2.0")
+    print(f"Server initialized at: http://127.0.0.1:{port}")
+    print("="*50 + "\n")
+    socketio.run(app, host='0.0.0.0', port=port, debug=True)

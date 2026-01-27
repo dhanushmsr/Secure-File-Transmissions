@@ -6,162 +6,40 @@
     <link rel="stylesheet" href="/static/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
-    <title>Sender Node</title>
+    <title>Sender Node | Hub</title>
     <link rel="icon" type="image/png" href="/img/sender.png?v=1.1">
     <style>
-        :root {
-            --primary: #6366f1;
-            --success: #22c55e;
-            --dark: #0f172a;
-            --slate: #f8fafc;
+        .nav-header {
+            width: 100%;
+            position: fixed;
+            top: 0;
+            left: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 30px;
+            background: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            box-sizing: border-box;
+            z-index: 1000;
         }
 
-        /* Professional Logout Button */
-        .btn-logout {
-            background: transparent;
-            border: 1px solid #ef4444;
-            color: #ef4444;
-            padding: 8px 18px;
-            border-radius: 8px;
-            text-decoration: none;
-            font-weight: bold;
-            font-size: 0.85rem;
-            transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .btn-logout:hover {
+        .logout-btn {
             background: #ef4444;
             color: white;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
-        }
-
-        /* Receiver Card Grid */
-        .receiver-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-            gap: 15px;
-            margin-top: 15px;
-            max-height: 320px;
-            overflow-y: auto;
-            padding: 5px;
-        }
-
-        .receiver-card {
-            position: relative;
-            background: white;
-            border: 2px solid #e2e8f0;
-            border-radius: 12px;
-            padding: 15px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            user-select: none;
-        }
-
-        .receiver-card input[type="checkbox"] {
-            display: none;
-        }
-
-        /* The Green Tick Indicator */
-        .tick-indicator {
-            width: 24px;
-            height: 24px;
-            border: 2px solid #cbd5e1;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s;
-            background: white;
-            flex-shrink: 0;
-        }
-
-        .tick-indicator i {
-            font-size: 0.75rem;
-            color: white;
-            display: none;
-        }
-
-        /* Active State */
-        .receiver-card.active {
-            border-color: var(--success);
-            background: #f0fdf4;
-            transform: scale(1.02);
-        }
-
-        .receiver-card.active .tick-indicator {
-            background: var(--success);
-            border-color: var(--success);
-        }
-
-        .receiver-card.active .tick-indicator i {
-            display: block;
-        }
-
-        /* Status Badge Styling */
-        .status-badge {
-            font-size: 0.65rem;
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-weight: bold;
-            text-transform: uppercase;
-            margin-top: 4px;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-        }
-
-        .status-online { background: #dcfce7; color: #166534; }
-        .status-offline { background: #f1f5f9; color: #64748b; }
-
-        .pulse-dot {
-            width: 6px;
-            height: 6px;
-            background: #22c55e;
-            border-radius: 50%;
-            animation: pulse 1.5s infinite;
-        }
-
-        @keyframes pulse {
-            0% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.5; transform: scale(1.2); }
-            100% { opacity: 1; transform: scale(1); }
-        }
-
-        .receiver-info b {
-            display: block;
-            font-size: 0.9rem;
-            color: #1e293b;
-        }
-
-        /* Floating Feedback Icon */
-        .feedback-trigger {
-            position: fixed;
-            bottom: 25px;
-            right: 25px;
-            width: 60px;
-            height: 60px;
-            background: var(--primary);
-            color: white;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
+            padding: 8px 16px;
+            border-radius: 8px;
             text-decoration: none;
-            box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.4);
-            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            z-index: 9999;
+            font-size: 0.85rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
         .broadcast-alert {
             position: fixed;
-            top: 20px;
+            top: 80px; 
             left: 50%;
             transform: translateX(-50%);
             background: #1e293b;
@@ -173,175 +51,273 @@
             z-index: 10000;
             display: none;
             box-shadow: 0 10px 25px rgba(0,0,0,0.4);
-            border: 1px solid var(--primary);
-            animation: slideDown 0.4s ease-out;
+            border: 1px solid #6366f1;
+            animation: slideDown 0.4s ease;
         }
 
         @keyframes slideDown {
-            from { top: -50px; opacity: 0; }
-            to { top: 20px; opacity: 1; }
+            from { top: -60px; opacity: 0; }
+            to { top: 80px; opacity: 1; }
         }
 
-        .container { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
+        .chat-box {
+            height: 150px;
+            overflow-y: auto;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            padding: 15px;
+            font-size: 0.9rem;
+            border-radius: 12px;
+            margin-top: 15px;
+            text-align: left;
+        }
+
+        .target-box {
+            background: #f1f5f9;
+            padding: 15px;
+            border-radius: 15px;
+            border: 1px solid #e2e8f0;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .target-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 5px;
+            border: 1px solid #e2e8f0;
+            transition: 0.2s;
+        }
+
+        .target-item:hover { background: #f8fafc; }
+
+        .target-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            margin-right: 12px;
+            cursor: pointer;
+        }
+
+        .target-item label {
+            cursor: pointer;
+            font-size: 0.85rem;
+            color: #334155;
+            flex: 1;
+        }
+
+        .feedback-trigger {
+            position: fixed;
+            bottom: 25px;
+            right: 25px;
+            width: 60px;
+            height: 60px;
+            background: #6366f1;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            text-decoration: none;
+            box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.4);
+            z-index: 999;
+        }
+
+        body {
+            background-color: #f0f4f8;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 100px 0 40px 0;
+        }
     </style>
 </head>
-<body style="background-color: #f8fafc; padding-top: 50px; padding-bottom: 50px;">
+<body>
 
-    <div id="broadcastAlert" class="broadcast-alert"></div>
+    <header class="nav-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <i class="fa-solid fa-satellite-dish" style="color: #6366f1; font-size: 1.2rem;"></i>
+            <span style="font-weight: 800; color: #1e293b; letter-spacing: 1px;">SENDER HUB</span>
+        </div>
+        <a href="/logout" class="logout-btn">
+            <i class="fa-solid fa-right-from-bracket"></i> Logout
+        </a>
+    </header>
 
-    <div class="container" style="max-width: 900px; margin: 0 auto;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 25px;">
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <div style="width: 12px; height: 12px; background: var(--success); border-radius: 50%;"></div>
-                <h2 style="margin: 0; color: #1e293b;">🚀 Sender Node</h2>
+    <div id="broadcastAlert" class="broadcast-alert">
+        <i class="fa-solid fa-bell"></i> <span id="alertText">Signal Transmitted</span>
+    </div>
+
+    <div class="container" style="max-width: 450px; width: 90%; background: white; padding: 40px; border-radius: 24px; box-shadow: 0 15px 35px rgba(0,0,0,0.08); text-align: center;">
+        
+        <div class="status-bar" style="margin-bottom: 20px;">
+            <div style="display: flex; align-items: center; justify-content: center; gap: 10px;">
+                <div class="indicator online" style="width: 10px; height: 10px; border-radius: 50%; background: #2ecc71; box-shadow: 0 0 10px rgba(46,204,113,0.6);"></div>
+                <span style="font-weight: 700; color: #555; font-size: 0.8rem;">SENDER NODE ACTIVE</span>
             </div>
-            <a href="/logout" class="btn-logout">
-                <i class="fa-solid fa-right-from-bracket"></i> Logout
-            </a>
         </div>
 
-        <div style="background:#f1f5f9; padding:25px; border-radius:15px; border: 1px solid #e2e8f0;">
-            <label style="font-weight: bold; display: block; margin-bottom: 10px; color: #475569;">
-                <i class="fa-solid fa-users"></i> Target Distribution Matrix
-            </label>
+        <h2 style="color: #1e293b; margin: 0;">🚀 Transmission</h2>
+        <p style="color: #64748b; font-size: 0.85rem; margin-bottom: 20px;">Select targets and deploy payload.</p>
+
+        <div class="target-box">
+            <div id="targetHeader" onclick="toggleTargetList()" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; padding: 5px;">
+                <label style="font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer;">
+                    Network Target: <span id="targetCount" style="color: #6366f1;">Broadcast</span>
+                </label>
+                <i id="targetChevron" class="fa-solid fa-chevron-down" style="font-size: 0.8rem; color: #64748b; transition: 0.3s;"></i>
+            </div>
             
-            <form action="/upload" method="post" enctype="multipart/form-data" id="uploadForm">
-                <div class="receiver-grid">
-                    <label class="receiver-card active" id="label_all">
-                        <input type="checkbox" name="target_receivers" value="all" checked onchange="handleSelection(this, 'label_all')">
-                        <div class="tick-indicator"><i class="fa-solid fa-check"></i></div>
-                        <div class="receiver-info">
-                            <b>📢 Broadcast All</b>
-                            <div class="status-badge status-online">
-                                <div class="pulse-dot"></div> Network Global
-                            </div>
+            <div id="targetListContainer" style="display: none; margin-top: 12px; border-top: 1px solid #e2e8f0; padding-top: 10px;">
+                <div id="selectionWindow" style="max-height: 180px; overflow-y: auto;">
+                    <div class="target-item" style="background: #1e293b; border: none;">
+                        <input type="checkbox" id="check_all" value="all" checked onchange="handleAllSelect(this)">
+                        <label for="check_all" style="font-weight: 700; color: white;">Broadcast to All Nodes</label>
+                    </div>
+                    
+                    <div id="receiverOptions">
+                        {% for r in receivers %}
+                        <div class="target-item" id="row_{{ r.phone }}">
+                            <input type="checkbox" class="receiver-check" value="room_{{ r.phone }}" id="check_{{ r.phone }}" onchange="handleSingleSelect()" disabled>
+                            <label for="check_{{ r.phone }}">{{ r.name }} ({{ r.phone }})</label>
                         </div>
-                    </label>
-
-                    {% for r in receivers %}
-                    <label class="receiver-card" id="label_{{ r.phone }}" data-last-seen="{{ r.last_seen }}">
-                        <input type="checkbox" name="target_receivers" value="room_{{ r.phone }}" onchange="handleSelection(this, 'label_{{ r.phone }}')">
-                        <div class="tick-indicator"><i class="fa-solid fa-check"></i></div>
-                        <div class="receiver-info">
-                            <b>👤 {{ r.name }}</b>
-                            <div class="status-badge status-online" id="status_{{ r.phone }}">
-                                <div class="pulse-dot"></div> Active Now
-                            </div>
-                        </div>
-                    </label>
-                    {% endfor %}
+                        {% endfor %}
+                    </div>
                 </div>
-
-                <div style="border: 2px dashed var(--primary); padding: 30px; border-radius: 15px; text-align: center; background: #f5f7ff; margin-top: 25px;">
-                    <i class="fa-solid fa-cloud-arrow-up" style="font-size: 2rem; color: var(--primary); margin-bottom: 10px;"></i>
-                    <input type="file" name="file" required style="display: block; margin: 0 auto; width: 100%;">
-                    <p style="margin-top: 10px; font-size: 0.75rem; color: #64748b;">Max Payload: 500MB | Secure Transmission</p>
-                </div>
-
-                <button type="submit" class="btn" style="width: 100%; margin-top: 20px; padding: 15px; background: var(--dark); font-weight: bold;">
-                    <i class="fa-solid fa-share-nodes"></i> Initiate Secure Multi-Transmission
-                </button>
-            </form>
+            </div>
         </div>
 
-        <div style="margin-top: 35px;">
-            <h4 style="color: #475569; margin-bottom: 10px;"><i class="fa-solid fa-comments"></i> Direct Communication</h4>
-            <div id="chatBox" style="height:220px; overflow-y:auto; background:#f8fafc; border:1px solid #e2e8f0; padding:15px; font-size:0.9rem; border-radius: 12px; margin-bottom: 15px;"></div>
+        <form action="/upload" method="post" enctype="multipart/form-data">
+            <input type="hidden" name="target_receiver" id="hiddenTarget" value="all">
             
-            <div style="display:flex; gap:10px;">
-                <input type="text" id="mInp" placeholder="Type message to selected recipients..." style="flex:1; padding: 12px; border-radius: 10px; border: 1px solid #cbd5e1; outline: none;">
-                <button onclick="sendMsg()" class="btn" style="width:auto; margin:0; padding: 0 25px; background: var(--primary);">Send</button>
+            <div style="border: 2px dashed #6366f1; padding: 25px; border-radius: 15px; background: #f5f7ff; cursor: pointer;" onclick="document.getElementById('fileInp').click()">
+                <i class="fa-solid fa-cloud-arrow-up" style="font-size: 2rem; color: #6366f1; margin-bottom: 10px;"></i>
+                <input type="file" name="file" id="fileInp" required style="display: none;" onchange="showName(this)">
+                <div id="fileStatus" style="font-size: 0.8rem; color: #475569;">Tap to select file</div>
             </div>
+
+            <button type="submit" class="btn" style="width: 100%; margin-top: 15px; background: #1e293b;" onclick="syncTarget()">
+                INITIATE UPLOAD
+            </button>
+        </form>
+
+        <div id="chatBox" class="chat-box"></div>
+        <div style="display: flex; gap: 5px; margin-top: 10px;">
+            <input type="text" id="mInp" placeholder="Send note..." style="flex: 1; padding: 10px; border-radius: 8px; border: 1px solid #ddd; outline: none;">
+            <button onclick="sendMsg()" style="background: #6366f1; color: white; border: none; padding: 0 15px; border-radius: 8px;"><i class="fa-solid fa-paper-plane"></i></button>
         </div>
     </div>
 
-    <a href="/feedback_page" class="feedback-trigger" title="Send Feedback to Admin">
-        <i class="fa-solid fa-message"></i>
-    </a>
+    <a href="/feedback_page" class="feedback-trigger"><i class="fa-solid fa-message"></i></a>
 
     <script>
         const socket = io();
 
-        // Card Selection Toggle
-        function handleSelection(checkbox, labelId) {
-            const card = document.getElementById(labelId);
-            if (checkbox.checked) {
-                card.classList.add('active');
+        function toggleTargetList() {
+            const container = document.getElementById('targetListContainer');
+            const chevron = document.getElementById('targetChevron');
+            const isOpen = container.style.display === 'block';
+            container.style.display = isOpen ? 'none' : 'block';
+            chevron.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+        }
+
+        function handleAllSelect(master) {
+            const others = document.querySelectorAll('.receiver-check');
+            others.forEach(cb => {
+                cb.disabled = master.checked;
+                if(master.checked) cb.checked = false;
+            });
+            updateCountLabel();
+        }
+
+        function handleSingleSelect() {
+            updateCountLabel();
+        }
+
+        function updateCountLabel() {
+            const master = document.getElementById('check_all');
+            const label = document.getElementById('targetCount');
+            const checkedCount = document.querySelectorAll('.receiver-check:checked').length;
+
+            if (master.checked) {
+                label.innerText = "Broadcast";
+            } else if (checkedCount === 0) {
+                label.innerText = "None Selected";
             } else {
-                card.classList.remove('active');
+                label.innerText = `${checkedCount} Selected`;
+            }
+            syncTarget();
+        }
+
+        function syncTarget() {
+            const master = document.getElementById('check_all');
+            const hiddenInp = document.getElementById('hiddenTarget');
+            if (master.checked) {
+                hiddenInp.value = "all";
+            } else {
+                const selected = Array.from(document.querySelectorAll('.receiver-check:checked')).map(cb => cb.value);
+                hiddenInp.value = selected.join(',');
             }
         }
 
-        // Real-time Status Logic
-        function updateLiveStatus() {
-            const cards = document.querySelectorAll('.receiver-card[data-last-seen]');
-            const now = new Date();
-
-            cards.forEach(card => {
-                const lastSeenStr = card.getAttribute('data-last-seen');
-                const lastSeen = new Date(lastSeenStr + " UTC");
-                const diffSeconds = (now - lastSeen) / 1000;
-                
-                const phone = card.id.replace('label_', '');
-                const badge = document.getElementById(`status_${phone}`);
-
-                if (badge) {
-                    if (diffSeconds > 15) {
-                        badge.className = "status-badge status-offline";
-                        badge.innerHTML = '<i class="fa-solid fa-circle-xmark"></i> Offline';
-                    } else {
-                        badge.className = "status-badge status-online";
-                        badge.innerHTML = '<div class="pulse-dot"></div> Active Now';
-                    }
-                }
-            });
+        function showName(input) {
+            document.getElementById('fileStatus').innerText = input.files[0] ? "Selected: " + input.files[0].name : "Tap to select file";
+            document.getElementById('fileStatus').style.color = "#22c55e";
         }
-
-        setInterval(updateLiveStatus, 5000);
-        window.onload = updateLiveStatus;
 
         function showAlert(text) {
             const alertBox = document.getElementById('broadcastAlert');
-            alertBox.innerHTML = `<i class="fa-solid fa-bell"></i> ${text}`;
+            document.getElementById('alertText').innerText = text;
             alertBox.style.display = 'block';
             setTimeout(() => { alertBox.style.display = 'none'; }, 4000);
         }
 
-        function getSelectedTargets() {
-            const checkboxes = document.querySelectorAll('input[name="target_receivers"]:checked');
-            return Array.from(checkboxes).map(cb => cb.value);
-        }
-
         function sendMsg() {
-            const msgInput = document.getElementById('mInp');
-            const message = msgInput.value.trim();
-            const targets = getSelectedTargets();
-            
-            if(message !== "" && targets.length > 0) { 
-                socket.emit('send_message', { 
-                    msg: message, 
-                    targets: targets 
-                }); 
-                msgInput.value = ""; 
-            } else if (targets.length === 0) {
-                alert("Please select at least one recipient.");
+            const m = document.getElementById('mInp').value;
+            syncTarget();
+            const targets = document.getElementById('hiddenTarget').value.split(',');
+            if(m.trim() !== "") {
+                socket.emit('send_message', { msg: m, targets: targets });
+                document.getElementById('mInp').value = "";
             }
         }
 
-        document.getElementById('mInp').addEventListener("keypress", (e) => {
-            if (e.key === "Enter") sendMsg();
+        // --- REAL-TIME UPDATES ---
+        socket.on('update_user_list', d => {
+            const list = document.getElementById('receiverOptions');
+            if (!document.getElementById(`check_${d.phone}`)) {
+                const isAllChecked = document.getElementById('check_all').checked;
+                const div = document.createElement('div');
+                div.className = 'target-item';
+                div.id = `row_${d.phone}`;
+                div.innerHTML = `
+                    <input type="checkbox" class="receiver-check" value="room_${d.phone}" id="check_${d.phone}" onchange="handleSingleSelect()" ${isAllChecked ? 'disabled' : ''}>
+                    <label for="check_${d.phone}">${d.name} (${d.phone})</label>
+                `;
+                list.appendChild(div);
+                showAlert(`Node Connected: ${d.name}`);
+            }
+        });
+
+        socket.on('remove_user_list', d => {
+            const row = document.getElementById(`row_${d.phone}`);
+            if (row) row.remove();
+            updateCountLabel();
         });
 
         socket.on('new_message', d => {
             const cb = document.getElementById('chatBox');
-            cb.innerHTML += `<div style="margin-bottom: 10px; border-bottom: 1px solid #f1f5f9; padding-bottom: 5px;">
-                                <span style="color:var(--primary); font-weight:bold;">${d.user}:</span> 
-                                <span style="color:#1e293b;">${d.msg}</span>
-                                <small style="color:#94a3b8; float:right; font-size: 0.7rem;">${d.time}</small>
-                             </div>`;
+            cb.innerHTML += `<div style="margin-bottom:5px;"><b style="color:#6366f1">${d.user}:</b> ${d.msg}</div>`;
             cb.scrollTop = cb.scrollHeight;
-            if(d.user !== "You") showAlert("Incoming Signal: " + d.user);
         });
+
+        document.getElementById('mInp').addEventListener("keypress", (e) => { if (e.key === "Enter") sendMsg(); });
     </script>
 </body>
 </html>
