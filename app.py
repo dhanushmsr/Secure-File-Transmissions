@@ -295,11 +295,10 @@ def logout():
 @app.route('/img/<path:filename>')
 def serve_images(filename):
     return send_from_directory(IMG_FOLDER, filename)
-
-if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    print("\n" + "="*50)
-    print("INKWAKE SECURE HUB v2.0")
-    print(f"Server initialized at: http://127.0.0.1:{port}")
-    print("="*50 + "\n")
-    socketio.run(app, host='0.0.0.0', port=port, debug=True)
+    
+if __name__ == "__main__":
+    app.run(
+        host=os.getenv("HOST", "127.0.0.1"),
+        port=int(os.getenv("PORT", 5000)),
+        debug=os.getenv("DEBUG") == "1"
+    )
