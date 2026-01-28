@@ -9,249 +9,197 @@
     <title>Sender Node | Hub</title>
     <link rel="icon" type="image/png" href="/img/sender.png?v=1.1">
     <style>
+        :root { --accent: #6366f1; --dark: #1e293b; --slate: #64748b; }
+
+        body {
+            background-color: #f0f4f8; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; min-height: 100vh;
+            margin: 0; padding: 100px 0 40px 0; font-family: 'Inter', sans-serif;
+        }
+
         .nav-header {
-            width: 100%;
-            position: fixed;
-            top: 0;
-            left: 0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 15px 30px;
-            background: white;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-            box-sizing: border-box;
-            z-index: 1000;
+            width: 100%; position: fixed; top: 0; left: 0; display: flex;
+            justify-content: space-between; align-items: center; padding: 15px 30px;
+            background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.05); box-sizing: border-box; z-index: 1000;
         }
 
         .logout-btn {
-            background: #ef4444;
-            color: white;
-            padding: 8px 16px;
-            border-radius: 8px;
-            text-decoration: none;
-            font-size: 0.85rem;
-            font-weight: bold;
-            display: flex;
+            background: #ef4444; color: white; padding: 8px 16px; border-radius: 8px;
+            text-decoration: none; font-size: 0.85rem; font-weight: bold; display: flex; align-items: center; gap: 8px;
+        }
+
+        /* Fixed Target Box Layout */
+        .target-box {
+            background: #f8fafc; padding: 15px; border-radius: 15px;
+            border: 1px solid #e2e8f0; margin-bottom: 20px; text-align: left;
+        }
+
+        #targetListContainer {
+            display: none; margin-top: 15px; border-top: 1px solid #cbd5e1;
+            padding-top: 15px; flex-direction: column; gap: 10px;
+        }
+
+        /* GRID ALIGNMENT: [Check | Dot | Name/Phone] */
+        .target-item {
+            display: grid;
+            grid-template-columns: 40px 30px 1fr; 
             align-items: center;
-            gap: 8px;
+            padding: 12px 15px;
+            background: white;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
+            transition: 0.2s;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .broadcast-item { 
+            background: #1e293b !important; 
+            border: none; 
+            margin-bottom: 5px;
+            grid-template-columns: 40px 1fr;
+        }
+        .broadcast-item label { color: white !important; font-weight: 700; letter-spacing: 0.5px; }
+
+        #selectionWindow {
+            max-height: 250px; overflow-y: auto; padding-right: 5px;
+            display: flex; flex-direction: column; gap: 8px;
+        }
+
+        .target-item input[type="checkbox"] {
+            width: 18px; height: 18px; cursor: pointer; justify-self: center;
+        }
+
+        /* Node Info Styling */
+        .node-info-stack {
+            display: flex;
+            flex-direction: column;
+            text-align: left;
+            cursor: pointer;
+        }
+        .node-name { font-size: 0.95rem; font-weight: 700; color: #1e293b; }
+        .node-phone { font-size: 0.75rem; color: #64748b; font-family: monospace; }
+
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; justify-self: center; }
+        .status-online { background: #22c55e; box-shadow: 0 0 8px rgba(34, 197, 94, 0.4); }
+        .status-away { background: #94a3b8; }
+
+        .feedback-trigger {
+            position: fixed; bottom: 30px; right: 30px; width: 70px; height: 70px;
+            background: var(--accent); color: white; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 2rem; text-decoration: none; box-shadow: 0 10px 20px rgba(99, 102, 241, 0.4); z-index: 2000;
         }
 
         .broadcast-alert {
-            position: fixed;
-            top: 80px; 
-            left: 50%;
-            transform: translateX(-50%);
-            background: #1e293b;
-            color: white;
-            padding: 12px 25px;
-            border-radius: 50px;
-            font-size: 0.9rem;
-            font-weight: bold;
-            z-index: 10000;
-            display: none;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.4);
-            border: 1px solid #6366f1;
+            position: fixed; top: 80px; left: 50%; transform: translateX(-50%);
+            background: #1e293b; color: white; padding: 12px 25px; border-radius: 50px;
+            font-size: 0.9rem; font-weight: bold; z-index: 10000; display: none;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.4); border: 1px solid var(--accent);
             animation: slideDown 0.4s ease;
         }
 
-        @keyframes slideDown {
-            from { top: -60px; opacity: 0; }
-            to { top: 80px; opacity: 1; }
-        }
-
-        .chat-box {
-            height: 150px;
-            overflow-y: auto;
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            padding: 15px;
-            font-size: 0.9rem;
-            border-radius: 12px;
-            margin-top: 15px;
-            text-align: left;
-        }
-
-        .target-box {
-            background: #f1f5f9;
-            padding: 15px;
-            border-radius: 15px;
-            border: 1px solid #e2e8f0;
-            margin-bottom: 20px;
-            text-align: left;
-        }
-
-        .target-item {
-            display: flex;
-            align-items: center;
-            padding: 10px;
-            background: white;
-            border-radius: 8px;
-            margin-bottom: 5px;
-            border: 1px solid #e2e8f0;
-            transition: 0.2s;
-        }
-
-        .target-item:hover { background: #f8fafc; }
-
-        .target-item input[type="checkbox"] {
-            width: 18px;
-            height: 18px;
-            margin-right: 12px;
-            cursor: pointer;
-        }
-
-        .target-item label {
-            cursor: pointer;
-            font-size: 0.85rem;
-            color: #334155;
-            flex: 1;
-        }
-
-        .feedback-trigger {
-            position: fixed;
-            bottom: 25px;
-            right: 25px;
-            width: 60px;
-            height: 60px;
-            background: #6366f1;
-            color: white;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-            text-decoration: none;
-            box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.4);
-            z-index: 999;
-        }
-
-        body {
-            background-color: #f0f4f8;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            padding: 100px 0 40px 0;
-        }
+        @keyframes slideDown { from { top: -60px; opacity: 0; } to { top: 80px; opacity: 1; } }
+        #progressBar { height: 100%; width: 0%; background: var(--accent); transition: width 0.2s; }
+        .chat-box { height: 120px; overflow-y: auto; background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; border-radius: 12px; margin-top: 15px; text-align: left; }
     </style>
 </head>
 <body>
 
     <header class="nav-header">
         <div style="display: flex; align-items: center; gap: 10px;">
-            <i class="fa-solid fa-satellite-dish" style="color: #6366f1; font-size: 1.2rem;"></i>
-            <span style="font-weight: 800; color: #1e293b; letter-spacing: 1px;">SENDER HUB</span>
+            <i class="fa-solid fa-satellite-dish" style="color: #6366f1; font-size: 1.5rem;"></i>
+            <span style="font-weight: 800; color: #1e293b; letter-spacing: 1px; font-size: 1.2rem;">SENDER HUB</span>
         </div>
-        <a href="/logout" class="logout-btn">
-            <i class="fa-solid fa-right-from-bracket"></i> Logout
-        </a>
+        <a href="/logout" class="logout-btn"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
     </header>
 
     <div id="broadcastAlert" class="broadcast-alert">
-        <i class="fa-solid fa-bell"></i> <span id="alertText">Signal Transmitted</span>
+        <i class="fa-solid fa-bell"></i> <span id="alertText">Notification</span>
     </div>
 
     <div class="container" style="max-width: 450px; width: 90%; background: white; padding: 40px; border-radius: 24px; box-shadow: 0 15px 35px rgba(0,0,0,0.08); text-align: center;">
         
-        <div class="status-bar" style="margin-bottom: 20px;">
-            <div style="display: flex; align-items: center; justify-content: center; gap: 10px;">
-                <div class="indicator online" style="width: 10px; height: 10px; border-radius: 50%; background: #2ecc71; box-shadow: 0 0 10px rgba(46,204,113,0.6);"></div>
-                <span style="font-weight: 700; color: #555; font-size: 0.8rem;">SENDER NODE ACTIVE</span>
-            </div>
-        </div>
-
         <h2 style="color: #1e293b; margin: 0;">🚀 Transmission</h2>
-        <p style="color: #64748b; font-size: 0.85rem; margin-bottom: 20px;">Select targets and deploy payload.</p>
+        <p style="color: #64748b; font-size: 0.85rem; margin-bottom: 20px;">Target nodes and deploy payload.</p>
 
         <div class="target-box">
-            <div id="targetHeader" onclick="toggleTargetList()" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; padding: 5px;">
-                <label style="font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer;">
-                    Network Target: <span id="targetCount" style="color: #6366f1;">Broadcast</span>
-                </label>
-                <i id="targetChevron" class="fa-solid fa-chevron-down" style="font-size: 0.8rem; color: #64748b; transition: 0.3s;"></i>
+            <div id="targetHeader" style="display: flex; justify-content: space-between; align-items: center; padding: 5px;">
+                <div onclick="toggleTargetList()" style="cursor: pointer; flex: 1; text-align: left;">
+                    <label style="font-size: 0.75rem; font-weight: 800; color: #64748b; text-transform: uppercase; cursor: pointer;">
+                        Target: <span id="targetCount" style="color: #6366f1;">Broadcast</span>
+                    </label>
+                    <i id="targetChevron" class="fa-solid fa-chevron-down" style="font-size: 0.8rem; margin-left: 5px;"></i>
+                </div>
+                <button onclick="refreshNodes()" id="syncBtn" style="background:none; border:none; color:var(--accent); cursor:pointer;" title="Sync Nodes">
+                    <i class="fa-solid fa-arrows-rotate"></i>
+                </button>
             </div>
             
-            <div id="targetListContainer" style="display: none; margin-top: 12px; border-top: 1px solid #e2e8f0; padding-top: 10px;">
-                <div id="selectionWindow" style="max-height: 180px; overflow-y: auto;">
-                    <div class="target-item" style="background: #1e293b; border: none;">
-                        <input type="checkbox" id="check_all" value="all" checked onchange="handleAllSelect(this)">
-                        <label for="check_all" style="font-weight: 700; color: white;">Broadcast to All Nodes</label>
-                    </div>
-                    
-                    <div id="receiverOptions">
-                        {% for r in receivers %}
-                        <div class="target-item" id="row_{{ r.phone }}">
-                            <input type="checkbox" class="receiver-check" value="room_{{ r.phone }}" id="check_{{ r.phone }}" onchange="handleSingleSelect()" disabled>
-                            <label for="check_{{ r.phone }}">{{ r.name }} ({{ r.phone }})</label>
-                        </div>
-                        {% endfor %}
-                    </div>
+            <div id="targetListContainer">
+                <div class="target-item broadcast-item">
+                    <input type="checkbox" id="check_all" value="all" checked onchange="handleAllSelect(this)">
+                    <label for="check_all">Broadcast to All Nodes</label>
+                </div>
+
+                <div id="selectionWindow">
+                    <div id="receiverOptions"></div>
                 </div>
             </div>
         </div>
 
-        <form action="/upload" method="post" enctype="multipart/form-data">
+        <form id="uploadForm">
             <input type="hidden" name="target_receiver" id="hiddenTarget" value="all">
-            
             <div style="border: 2px dashed #6366f1; padding: 25px; border-radius: 15px; background: #f5f7ff; cursor: pointer;" onclick="document.getElementById('fileInp').click()">
-                <i class="fa-solid fa-cloud-arrow-up" style="font-size: 2rem; color: #6366f1; margin-bottom: 10px;"></i>
+                <i class="fa-solid fa-cloud-arrow-up" style="font-size: 2.5rem; color: #6366f1; margin-bottom: 10px;"></i>
                 <input type="file" name="file" id="fileInp" required style="display: none;" onchange="showName(this)">
-                <div id="fileStatus" style="font-size: 0.8rem; color: #475569;">Tap to select file</div>
+                <div id="fileStatus" style="font-size: 0.95rem; font-weight: bold; color: #475569;">Select Payload</div>
             </div>
-
-            <button type="submit" class="btn" style="width: 100%; margin-top: 15px; background: #1e293b;" onclick="syncTarget()">
-                INITIATE UPLOAD
-            </button>
+            <button type="submit" id="initiateBtn" class="btn" style="width: 100%; margin-top: 15px; background: #1e293b; color: white; padding: 14px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer;">INITIATE UPLOAD</button>
         </form>
+
+        <div id="progressContainer" style="display:none; background: #f1f5f9; padding: 15px; border-radius: 12px; margin-top: 15px; border: 1px solid #e2e8f0;">
+            <div style="display:flex; justify-content:space-between; font-size: 0.75rem; margin-bottom: 8px;">
+                <span id="progressStatus" style="color: var(--dark); font-weight: bold;">Sending Data...</span>
+                <span id="progressPercent" style="color: var(--accent); font-weight: 800;">0%</span>
+            </div>
+            <div style="width:100%; height:10px; background:#e2e8f0; border-radius:10px; overflow:hidden;">
+                <div id="progressBar"></div>
+            </div>
+        </div>
 
         <div id="chatBox" class="chat-box"></div>
         <div style="display: flex; gap: 5px; margin-top: 10px;">
-            <input type="text" id="mInp" placeholder="Send note..." style="flex: 1; padding: 10px; border-radius: 8px; border: 1px solid #ddd; outline: none;">
+            <input type="text" id="mInp" placeholder="Note..." style="flex: 1; padding: 10px; border-radius: 8px; border: 1px solid #ddd; outline: none;">
             <button onclick="sendMsg()" style="background: #6366f1; color: white; border: none; padding: 0 15px; border-radius: 8px;"><i class="fa-solid fa-paper-plane"></i></button>
         </div>
     </div>
 
-    <a href="/feedback_page" class="feedback-trigger"><i class="fa-solid fa-message"></i></a>
+    <a href="/feedback_page" class="feedback-trigger"><i class="fa-solid fa-comment-dots"></i></a>
 
     <script>
         const socket = io();
 
         function toggleTargetList() {
             const container = document.getElementById('targetListContainer');
-            const chevron = document.getElementById('targetChevron');
-            const isOpen = container.style.display === 'block';
-            container.style.display = isOpen ? 'none' : 'block';
-            chevron.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+            const isOpen = container.style.display === 'flex';
+            container.style.display = isOpen ? 'none' : 'flex';
         }
 
         function handleAllSelect(master) {
-            const others = document.querySelectorAll('.receiver-check');
-            others.forEach(cb => {
+            document.querySelectorAll('.receiver-check').forEach(cb => {
                 cb.disabled = master.checked;
                 if(master.checked) cb.checked = false;
             });
             updateCountLabel();
         }
 
-        function handleSingleSelect() {
-            updateCountLabel();
-        }
+        function handleSingleSelect() { updateCountLabel(); }
 
         function updateCountLabel() {
             const master = document.getElementById('check_all');
-            const label = document.getElementById('targetCount');
             const checkedCount = document.querySelectorAll('.receiver-check:checked').length;
-
-            if (master.checked) {
-                label.innerText = "Broadcast";
-            } else if (checkedCount === 0) {
-                label.innerText = "None Selected";
-            } else {
-                label.innerText = `${checkedCount} Selected`;
-            }
+            document.getElementById('targetCount').innerText = master.checked ? "Broadcast" : (checkedCount === 0 ? "None" : `${checkedCount} Nodes`);
             syncTarget();
         }
 
@@ -266,45 +214,94 @@
             }
         }
 
-        function showName(input) {
-            document.getElementById('fileStatus').innerText = input.files[0] ? "Selected: " + input.files[0].name : "Tap to select file";
-            document.getElementById('fileStatus').style.color = "#22c55e";
+        function refreshNodes() {
+            const list = document.getElementById('receiverOptions');
+            list.innerHTML = ''; 
+            const syncIcon = document.querySelector('#syncBtn i');
+            if(syncIcon) syncIcon.classList.add('fa-spin');
+
+            socket.emit('request_discovery');
+            
+            fetch('/api/active_nodes').then(res => res.json()).then(nodes => {
+                nodes.forEach(node => addNodeToList(node));
+                if(syncIcon) setTimeout(() => syncIcon.classList.remove('fa-spin'), 600);
+            });
         }
+
+        function addNodeToList(node) {
+            const list = document.getElementById('receiverOptions');
+            if (document.getElementById(`row_${node.phone}`)) return;
+
+            const isAllChecked = document.getElementById('check_all').checked;
+            const div = document.createElement('div');
+            div.className = 'target-item';
+            div.id = `row_${node.phone}`;
+            const statusClass = node.status === 'online' || !node.status ? 'status-online' : 'status-away';
+
+            div.innerHTML = `
+                <input type="checkbox" class="receiver-check" value="room_${node.phone}" id="check_${node.phone}" onchange="handleSingleSelect()" ${isAllChecked ? 'disabled' : ''}>
+                <span class="status-dot ${statusClass}"></span>
+                <label for="check_${node.phone}" class="node-info-stack">
+                    <span class="node-name">${node.name}</span>
+                    <span class="node-phone">(${node.phone})</span>
+                </label>`;
+            list.appendChild(div);
+            updateCountLabel();
+        }
+
+        document.getElementById('uploadForm').onsubmit = function(e) {
+            e.preventDefault(); syncTarget();
+            const fileInp = document.getElementById('fileInp');
+            if (!fileInp.files[0]) return;
+
+            const formData = new FormData();
+            formData.append('file', fileInp.files[0]);
+            formData.append('target_receiver', document.getElementById('hiddenTarget').value);
+
+            const xhr = new XMLHttpRequest();
+            document.getElementById('progressContainer').style.display = 'block';
+            document.getElementById('initiateBtn').disabled = true;
+
+            xhr.upload.addEventListener('progress', (e) => {
+                if (e.lengthComputable) {
+                    const p = Math.round((e.loaded / e.total) * 100);
+                    document.getElementById('progressBar').style.width = p + '%';
+                    document.getElementById('progressPercent').innerText = p + '%';
+                }
+            });
+
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    showAlert("✅ Payload Delivered Successfully");
+                    setTimeout(() => window.location.reload(), 1500);
+                } else {
+                    alert("Transmission Error");
+                    document.getElementById('initiateBtn').disabled = false;
+                }
+            };
+            xhr.open('POST', '/upload', true);
+            xhr.send(formData);
+        };
 
         function showAlert(text) {
             const alertBox = document.getElementById('broadcastAlert');
             document.getElementById('alertText').innerText = text;
             alertBox.style.display = 'block';
-            setTimeout(() => { alertBox.style.display = 'none'; }, 4000);
+            setTimeout(() => alertBox.style.display = 'none', 4000);
         }
+
+        function showName(input) { document.getElementById('fileStatus').innerText = "Selected: " + input.files[0].name; }
 
         function sendMsg() {
             const m = document.getElementById('mInp').value;
-            syncTarget();
-            const targets = document.getElementById('hiddenTarget').value.split(',');
             if(m.trim() !== "") {
-                socket.emit('send_message', { msg: m, targets: targets });
+                socket.emit('send_message', { msg: m, targets: document.getElementById('hiddenTarget').value.split(',') });
                 document.getElementById('mInp').value = "";
             }
         }
 
-        // --- REAL-TIME UPDATES ---
-        socket.on('update_user_list', d => {
-            const list = document.getElementById('receiverOptions');
-            if (!document.getElementById(`check_${d.phone}`)) {
-                const isAllChecked = document.getElementById('check_all').checked;
-                const div = document.createElement('div');
-                div.className = 'target-item';
-                div.id = `row_${d.phone}`;
-                div.innerHTML = `
-                    <input type="checkbox" class="receiver-check" value="room_${d.phone}" id="check_${d.phone}" onchange="handleSingleSelect()" ${isAllChecked ? 'disabled' : ''}>
-                    <label for="check_${d.phone}">${d.name} (${d.phone})</label>
-                `;
-                list.appendChild(div);
-                showAlert(`Node Connected: ${d.name}`);
-            }
-        });
-
+        socket.on('update_user_list', d => { showAlert(`Node Connected: ${d.name}`); setTimeout(() => refreshNodes(), 300); });
+        socket.on('node_online', d => { addNodeToList(d); });
         socket.on('remove_user_list', d => {
             const row = document.getElementById(`row_${d.phone}`);
             if (row) row.remove();
@@ -313,11 +310,12 @@
 
         socket.on('new_message', d => {
             const cb = document.getElementById('chatBox');
-            cb.innerHTML += `<div style="margin-bottom:5px;"><b style="color:#6366f1">${d.user}:</b> ${d.msg}</div>`;
+            cb.innerHTML += `<div><b style="color:#6366f1">${d.user}:</b> ${d.msg}</div>`;
             cb.scrollTop = cb.scrollHeight;
         });
 
-        document.getElementById('mInp').addEventListener("keypress", (e) => { if (e.key === "Enter") sendMsg(); });
+        document.addEventListener('DOMContentLoaded', refreshNodes);
+        setInterval(refreshNodes, 30000);
     </script>
 </body>
 </html>

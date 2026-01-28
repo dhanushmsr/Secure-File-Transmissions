@@ -56,14 +56,14 @@
         }
 
         .action-trigger {
-            width: 60px;
-            height: 60px;
+            width: 65px;
+            height: 65px;
             color: white;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.4rem;
+            font-size: 1.6rem;
             text-decoration: none;
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
             transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -122,6 +122,7 @@
             border-radius: 15px;
             min-height: 400px;
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
             overflow: hidden;
@@ -205,7 +206,7 @@
             <i class="fa-solid fa-clock-rotate-left"></i>
         </a>
         <a href="/feedback_page" class="action-trigger feedback-btn" title="Send Feedback to Admin">
-            <i class="fa-solid fa-message"></i>
+            <i class="fa-solid fa-comment-dots"></i>
         </a>
     </div>
 
@@ -229,9 +230,18 @@
             
             // Start heartbeat
             setInterval(() => {
-                socket.emit('heartbeat', { name: uName, phone: uPhone });
+                socket.emit('heartbeat', { phone: uPhone });
             }, 30000);
         }
+
+        // Discovery listener for Sender Hub Handshake
+        socket.on('discovery_ping', () => {
+            socket.emit('discovery_pong', {
+                name: uName,
+                phone: uPhone,
+                status: 'online'
+            });
+        });
 
         function sendReply() {
             const input = document.getElementById('replyInput');

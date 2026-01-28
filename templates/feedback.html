@@ -6,7 +6,7 @@
     <link rel="stylesheet" href="/static/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="icon" type="image/png" href="/img/feedback.png?v=1.1">
-    <title>Support Node</title>
+    <title>Inkwake | Support Node</title>
     
     <style>
         :root {
@@ -40,65 +40,82 @@
         }
 
         .user-avatar {
-            width: 70px;
-            height: 70px;
+            width: 75px;
+            height: 75px;
             background: linear-gradient(135deg, #6366f1, #a855f7);
-            border-radius: 20px;
+            border-radius: 22px;
             margin: 0 auto 25px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.8rem;
+            font-size: 2rem;
             transform: rotate(-5deg);
+            box-shadow: 0 10px 20px rgba(99, 102, 241, 0.3);
         }
 
         h2 { 
             margin: 10px 0; 
-            font-weight: 700; 
-            font-size: 1.6rem;
+            font-weight: 800; 
+            font-size: 1.7rem;
             line-height: 1.2;
+            letter-spacing: -0.5px;
         }
 
-        p { color: #94a3b8; margin-bottom: 30px; font-size: 0.9rem; }
+        p { color: #94a3b8; margin-bottom: 30px; font-size: 0.95rem; }
 
         textarea {
             width: 100%;
             background: rgba(0, 0, 0, 0.3);
             border: 1px solid var(--glass-border);
-            border-radius: 14px;
-            padding: 18px;
+            border-radius: 16px;
+            padding: 20px;
             color: white;
             font-family: inherit;
             resize: none;
-            height: 130px;
+            height: 140px;
             margin-bottom: 20px;
             outline: none;
             transition: 0.3s;
+            box-sizing: border-box;
         }
 
-        textarea:focus { border-color: var(--accent-glow); background: rgba(0, 0, 0, 0.4); }
+        textarea:focus { 
+            border-color: var(--accent-glow); 
+            background: rgba(0, 0, 0, 0.4); 
+            box-shadow: 0 0 15px rgba(99, 102, 241, 0.2);
+        }
 
         .submit-btn {
             background: #6366f1;
             color: white;
             border: none;
-            padding: 15px;
-            border-radius: 14px;
-            font-weight: 600;
+            padding: 16px;
+            border-radius: 16px;
+            font-weight: 700;
             width: 100%;
             cursor: pointer;
             transition: 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 0.9rem;
         }
 
-        .submit-btn:hover { background: #4f46e5; transform: scale(1.02); }
+        .submit-btn:hover { 
+            background: #4f46e5; 
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(79, 70, 229, 0.4);
+        }
 
         .back-link {
             display: inline-block;
-            margin-top: 25px;
+            margin-top: 30px;
             color: #64748b;
             text-decoration: none;
-            font-size: 0.8rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: 0.2s;
         }
+        .back-link:hover { color: #94a3b8; }
     </style>
 </head>
 <body>
@@ -114,21 +131,33 @@
 
         <h2>
             {% if session.get('role') == 'receiver' %}
-                Hey {{ user_name }}, <br>what problems are you facing?
+                Hey {{ user_name }}, <br>reporting an issue?
             {% else %}
-                {{ user_name }}, have an issue? <br>Let us know.
+                {{ user_name }}, <br>need assistance?
             {% endif %}
         </h2>
 
-        <p>Your feedback is encrypted and sent directly to the System Admin.</p>
+        <p>Your encrypted message will be transmitted directly to the Admin Hub.</p>
 
-        <form action="/submit_feedback" method="post">
-            <textarea name="feedback_msg" placeholder="Type your message here..." required></textarea>
-            <button type="submit" class="submit-btn">Transmit Feedback</button>
+        <form action="/submit_feedback" method="post" id="feedbackForm">
+            <textarea name="feedback_msg" placeholder="Describe the problem or suggestion here..." required></textarea>
+            <button type="submit" class="submit-btn">TRANSMIT FEEDBACK</button>
         </form>
 
-        <a href="/" class="back-link"><i class="fa-solid fa-arrow-left"></i> Back to Dashboard</a>
+        <a href="javascript:history.back()" class="back-link">
+            <i class="fa-solid fa-arrow-left" style="margin-right: 8px;"></i> Return to Dashboard
+        </a>
     </div>
+
+    <script>
+        // Visual confirmation before submitting
+        document.getElementById('feedbackForm').onsubmit = function() {
+            const btn = document.querySelector('.submit-btn');
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> TRANSMITTING...';
+            btn.style.opacity = '0.7';
+            btn.style.pointerEvents = 'none';
+        };
+    </script>
 
 </body>
 </html>

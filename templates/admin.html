@@ -53,20 +53,29 @@
             z-index: 1000;
         }
 
-        .logout-btn {
-            background: #ef4444;
-            color: white;
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        /* Header Navigation Buttons */
+        .header-btn {
             padding: 8px 16px;
             border-radius: 8px;
             text-decoration: none;
             font-size: 0.85rem;
             font-weight: bold;
-            transition: 0.3s;
             display: flex;
             align-items: center;
             gap: 8px;
+            transition: 0.3s;
         }
 
+        .history-btn { background: #1e293b; color: white; }
+        .history-btn:hover { background: #334155; }
+        
+        .logout-btn { background: #ef4444; color: white; }
         .logout-btn:hover { background: #dc2626; }
 
         .admin-grid { 
@@ -96,7 +105,7 @@
             font-size: 0.85rem; 
         }
 
-        .log-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; margin-top: 10px; }
+        .log-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin-top: 10px; }
         .log-table th, .log-table td { text-align: left; padding: 12px; border-bottom: 1px solid var(--border-color); color: var(--text-main); }
         
         .btn-action { 
@@ -111,14 +120,10 @@
             display: inline-flex; 
             align-items: center; 
             gap: 5px; 
-            background: transparent;
         }
 
-        .btn-action:hover { background: var(--accent); color: white; border-color: var(--accent); }
-        .btn-danger { color: #ef4444; border-color: #fca5a5; }
+        .btn-danger { color: #ef4444; border-color: #fca5a5; font-weight: bold; }
         .btn-danger:hover { background: #ef4444; color: white; }
-        .btn-success { color: #22c55e; border-color: #bbf7d0; }
-        .btn-success:hover { background: #22c55e; color: white; }
 
         .theme-toggle { 
             background: var(--accent); 
@@ -128,10 +133,7 @@
             border-radius: 8px; 
             cursor: pointer; 
             font-weight: bold; 
-            margin-right: 15px; 
         }
-
-        .badge-status { padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 0.7rem; text-transform: uppercase; }
 
         input, select {
             width: 100%;
@@ -152,9 +154,14 @@
             <i class="fa-solid fa-gears" style="color: #6366f1; font-size: 1.2rem;"></i>
             <span style="font-weight: 800; color: var(--text-main); letter-spacing: 1px;">ADMIN COMMAND</span>
         </div>
-        <div style="display: flex; align-items: center;">
+        <div class="header-actions">
             <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn">🌙 Dark Mode</button>
-            <a href="/logout" class="logout-btn">
+            
+            <a href="/admin/history" class="header-btn history-btn">
+                <i class="fa-solid fa-clock-rotate-left"></i> Login History
+            </a>
+
+            <a href="/logout" class="header-btn logout-btn">
                 <i class="fa-solid fa-right-from-bracket"></i> Logout
             </a>
         </div>
@@ -165,7 +172,7 @@
         <div class="stats-bar">
             <span><i class="fa-solid fa-microchip"></i> CPU: <b>{{ health.cpu }}%</b></span>
             <span><i class="fa-solid fa-memory"></i> RAM: <b>{{ health.ram }}%</b></span>
-            <span><i class="fa-solid fa-database"></i> Storage: <b>{{ used_mb }}MB / 500MB</b></span>
+            <span><i class="fa-solid fa-database"></i> Storage Used: <b>{{ used_mb }} MB</b></span>
         </div>
 
         <div class="admin-grid">
@@ -181,7 +188,7 @@
                     </select>
                     <label style="font-size: 0.7rem; font-weight: bold; display: block; margin-top: 10px;">NEW ACCESS KEY</label>
                     <input type="password" name="new_password" placeholder="Enter new password" required>
-                    <button type="submit" class="btn" style="background:var(--accent); margin-top:15px; width: 100%; border:none; color:white; padding:12px; border-radius:8px; cursor:pointer; font-weight:bold;">ROTATE SECURITY KEY</button>
+                    <button type="submit" style="background:var(--accent); margin-top:15px; width: 100%; border:none; color:white; padding:12px; border-radius:8px; cursor:pointer; font-weight:bold;">ROTATE SECURITY KEY</button>
                 </form>
             </div>
 
@@ -201,97 +208,30 @@
                 </div>
             </div>
 
-            <div class="card" style="grid-column: span 2; border-top: 4px solid #ef4444;">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <h4 style="margin:0; color:#ef4444;"><i class="fa-solid fa-shield-halved"></i> Intrusion Detection System</h4>
-                    <div style="display:flex; gap:10px; align-items:center;">
-                        <a href="/clear_ids" class="btn-action btn-danger" onclick="return confirm('Clear all intrusion logs?')">
-                            <i class="fa-solid fa-eraser"></i> Clear Logs
-                        </a>
-                        <span class="badge-status" style="background:#fee2e2; color:#ef4444;">Live Monitoring</span>
-                    </div>
-                </div>
-                <div style="max-height: 250px; overflow-y: auto;">
-                    <table class="log-table">
-                        <thead>
-                            <tr>
-                                <th>Severity</th>
-                                <th>Target</th>
-                                <th>Source IP</th>
-                                <th>Timestamp</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for log in failed_logs %}
-                            <tr>
-                                <td><span class="badge-status" style="background:#ef4444; color:white;">High Risk</span></td>
-                                <td><b style="text-transform:uppercase;">{{ log.role_tried }}</b></td>
-                                <td style="font-family: monospace;">{{ log.ip }}</td>
-                                <td>{{ log.timestamp }}</td>
-                                <td>
-                                    <a href="/blacklist_ip/{{ log.ip }}" class="btn-action btn-danger">
-                                        <i class="fa-solid fa-ban"></i> Block
-                                    </a>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div class="card" style="grid-column: span 2;">
-                <h4 style="margin-top:0;"><i class="fa-solid fa-user-slash"></i> Managed Blacklist</h4>
-                <div style="max-height: 200px; overflow-y: auto;">
-                    <table class="log-table">
-                        <thead>
-                            <tr>
-                                <th>Blocked IP</th>
-                                <th>Reason</th>
-                                <th>Timestamp</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for b in blacklisted_ips %}
-                            <tr>
-                                <td style="font-family: monospace;"><b>{{ b.ip }}</b></td>
-                                <td>{{ b.reason }}</td>
-                                <td>{{ b.timestamp }}</td>
-                                <td>
-                                    <a href="/unblock_ip/{{ b.ip }}" class="btn-action btn-success">
-                                        <i class="fa-solid fa-unlock"></i> Unblock
-                                    </a>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
             <div class="card" style="grid-column: span 2; border-top: 4px solid #0ea5e9;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px;">
                     <h4 style="margin:0; color:#0ea5e9;"><i class="fa-solid fa-message"></i> Client Feedback Reports</h4>
-                    <a href="/clear_feedback" class="btn-action btn-danger" onclick="return confirm('Wipe all feedback?')"><i class="fa-solid fa-trash-can"></i> Clear All</a>
+                    <a href="/clear_feedback" class="btn-action btn-danger" onclick="return confirm('Wipe all feedback reports?')"><i class="fa-solid fa-trash-can"></i> Clear All</a>
                 </div>
-                <div style="max-height: 250px; overflow-y: auto;">
+                <div style="max-height: 300px; overflow-y: auto;">
                     <table class="log-table">
                         <thead>
                             <tr>
-                                <th>Client</th>
-                                <th>Report</th>
-                                <th>Date</th>
+                                <th>Client Source</th>
+                                <th>Report Message</th>
+                                <th>Timestamp</th>
                                 <th>Action</th>
                             </tr>
                         </thead>
                         <tbody>
+                            {% if not feedbacks %}
+                            <tr><td colspan="4" style="text-align:center; color: var(--text-sub);">No feedback reports available.</td></tr>
+                            {% endif %}
                             {% for f in feedbacks %}
                             <tr>
-                                <td><b>{{ f.sender_name }}</b> ({{ f.role }})</td>
+                                <td><b>{{ f.sender_name }}</b> <span style="font-size: 0.7rem; color: var(--text-sub);">({{ f.role }})</span></td>
                                 <td style="font-style: italic;">"{{ f.message }}"</td>
-                                <td>{{ f.timestamp }}</td>
+                                <td style="font-size: 0.8rem; color: var(--text-sub);">{{ f.timestamp }}</td>
                                 <td>
                                     <a href="/delete_feedback/{{ f.id }}" style="color: #ef4444;"><i class="fa-solid fa-circle-xmark"></i></a>
                                 </td>
@@ -305,15 +245,10 @@
     </div>
 
     <script>
-        // Check for success notifications
         window.onload = () => {
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.has('pass_success')) {
                 alert("🔒 SUCCESS: The access key for " + urlParams.get('role') + " has been rotated.");
-                window.history.replaceState({}, document.title, "/admin");
-            }
-            if (urlParams.has('ids_cleared')) {
-                alert("🛡️ IDS: Intrusion database has been wiped clean.");
                 window.history.replaceState({}, document.title, "/admin");
             }
 
